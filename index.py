@@ -11,7 +11,10 @@ class Product:
         self.wind.configure(bg='#1F1F1F')
 
         #Variables
+        self.username = ''
 
+        """Labels"""
+        
 
 if __name__ == '__main__':
     WindowT = Tk()
