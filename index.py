@@ -41,6 +41,11 @@ class Product:
         self.entry_chat.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_chat.place(relwidth = 0.75, relheight = 0.06, relx = 0.02, rely = 0.92)
 
+        """Chat"""
+        self.widget_chat = Text(self.label_chat, font=('Arial', 15))
+        self.widget_chat.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
+        self.widget_chat.place(relwidth = 0.9999, relheight = 0.91, relx = 0.00, rely = 0.0)
+
 
 if __name__ == '__main__':
     WindowT = Tk()
