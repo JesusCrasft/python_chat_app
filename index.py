@@ -3,7 +3,7 @@ from tkinter import *
 
 import socket
 
-class Product:
+class App:
 
     def __init__(self, WindowT):
         #Window Attributes
@@ -29,7 +29,7 @@ class Product:
         self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
 
         #Chat Label
-        self.label_chat = Label(self.wind, text='three')
+        self.label_chat = Label(self.wind)
         self.label_chat.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
         self.label_chat.place(relwidth = 0.70, relheight = 0.9999, relx = 0.30, rely = 0.0)
 
@@ -55,13 +55,43 @@ class Product:
         self.button_sendimg = Button(self.label_chat, text='Imagen')
         self.button_sendimg.place(relwidth = 0.10, relheight = 0.05, relx = 0.89, rely = 0.92)
 
+
+        """Messages"""
+        self.widget_messages = Message(self.label_chat, text='Prueba')
+        #self.widget_messages.place(relwidth = 0.10, relheight = 0.05, relx = 0.50, rely = 0.50)
+
+
         """Chat"""
+        #Chat Frame
+        self.frame_chat = Frame(self.label_chat)
+        self.frame_chat.configure(background='#1F1F1F', relief=SOLID, borderwidth=2)
+        self.frame_chat.place(relwidth = 0.9998, relheight = 0.91, relx = 0.0, rely = 0.0)
+
+        #Chat Canvas
+        self.canvas_chat = Canvas(self.frame_chat)
+        self.canvas_chat.configure(background='gray', relief=SOLID, borderwidth=0, highlightbackground='#1F1F1F')
+        self.canvas_chat.place(relwidth = 0.9998, relheight = 0.9999, relx = 0.0, rely = 0.0)
         
+        #Chat Scrollbar
+        self.scrollbar_chat = Scrollbar(self.frame_chat, orient=VERTICAL, command=self.canvas_chat.yview)
+        self.scrollbar_chat.configure()
+        self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.996, relx = 0.92, rely = 0)
         
+        #Configure Chat Canvas with Chat Scrollbar
+        self.canvas_chat.configure(yscrollcommand=self.scrollbar_chat.set)
+        self.canvas_chat.bind('<Configure>', lambda e: self.canvas_chat.configure(scrollregion=self.canvas_chat.bbox('all'))) 
+
+        #Helper Frame
+        self.frame_helper = Frame(self.canvas_chat)
+        self.canvas_chat.create_window((0,0), window=self.frame_helper, anchor=NW)
+
+        for messages in range(100):
+            Message(self.frame_helper, text=f'Nakuru {messages}').grid()
+            
     
         
 
 if __name__ == '__main__':
     WindowT = Tk()
-    application = Product(WindowT)
+    application = App(WindowT)
     WindowT.mainloop()
