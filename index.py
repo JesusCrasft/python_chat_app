@@ -1,6 +1,8 @@
 from tkinter import ttk
 from tkinter import * 
 
+import socket
+
 class Product:
 
     def __init__(self, WindowT):
@@ -11,7 +13,9 @@ class Product:
         self.wind.configure(bg='#1F1F1F')
 
         #Variables
+        self.my_socket = socket.socket()
         self.username = ''
+       
 
         """Labels"""
         #Username Label
@@ -41,11 +45,21 @@ class Product:
         self.entry_chat.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_chat.place(relwidth = 0.75, relheight = 0.06, relx = 0.02, rely = 0.92)
 
-        """Chat"""
-        self.widget_chat = Text(self.label_chat, font=('Arial', 15))
-        self.widget_chat.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
-        self.widget_chat.place(relwidth = 0.9999, relheight = 0.91, relx = 0.00, rely = 0.0)
 
+        """Buttons"""
+        #Chat Button
+        self.button_chat = Button(self.label_chat, text='Enviar')
+        self.button_chat.place(relwidth = 0.10, relheight = 0.05, relx = 0.78, rely = 0.92)
+
+        #Image Button
+        self.button_sendimg = Button(self.label_chat, text='Imagen')
+        self.button_sendimg.place(relwidth = 0.10, relheight = 0.05, relx = 0.89, rely = 0.92)
+
+        """Chat"""
+        
+        
+    
+        
 
 if __name__ == '__main__':
     WindowT = Tk()
