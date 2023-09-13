@@ -12,10 +12,19 @@ class App:
         self.wind.geometry('900x700')
         self.wind.configure(bg='#1F1F1F')
 
+        #Constants
+        self.HEADER = 64
+        self.PORT = 8080
+        self.FORMAT = 'utf-8'
+        self.DISCONNECT_MESSAGE = "!DISCONNECT"
+        self.SERVER = "192.168.1.205"
+        self.ADDR = (self.SERVER, self.PORT)
+
         #Variables
         self.username = 'jesus'
         self.x = 0.80
         self.y = 0
+        self.arrived_message = "False"
        
 
         """Labels"""
@@ -54,7 +63,7 @@ class App:
 
         """Buttons"""
         #Chat Button
-        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.place_mymessage)
+        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.place_message)
         self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
 
         #Image Button
@@ -74,39 +83,57 @@ class App:
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
 
-    #Function to place the message that the user wrote
-    def place_mymessage(self):
+    #Function to place the message
+    def place_message(self):
         #Get the message
         message = self.entry_chat.get()
 
         #Insert the message in the chat
         self.listbox_chat.insert(END, f'{self.username} : {message} \n')
-        
-        #Encode the message
-        message_encode = message.encode()
 
         #Sending message
-        self.send_mymessage(message_encode)
-
-    def send_mymessage(self, message):
-        sender = self.username.encode()
-        request = (sender, message)
-
-        #Create the socket
-        self.my_socket = socket.socket()
-
-        #Connect to host
-        self.my_socket.connect(('localhost', 8000))
-
-        #Send the message and sender
-        self.my_socket.sendall()
-
-        self.my_socket.close()
+        message = message.encode(self.FORMAT)
+        self.send_message(message)
 
 
-    def place_hismessage(self):
-        pass
+    #Function to send the message and username
+    def send_message(self, msg):
+        #Connect to server
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
+        
+        #Extract the length and encode the message
+        send_length = self.length_message(msg)[0]
+        message = self.length_message(msg)[1]
 
+        #Sending the message and the length
+        self.client.send(send_length)
+        self.client.send(message)
+
+        #End the connection
+        self.client.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
+        self.client.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1])
+
+        self.recieve_message()
+    
+    #Recieve message
+    def recieve_message(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
+
+        #New message
+        self.arrived_message = self.client.recv(1024).decode()
+
+        while self.arrived_message != "False":
+            print(self.arrived_message)
+            self.arrived_message = "False"
+
+    #Function to extract the length
+    def length_message(self, msg):
+        msg_length = len(msg)
+        send_length = str(msg_length).encode(self.FORMAT)
+        send_length += b' ' * (self.HEADER - len(send_length))
+        return [send_length, msg]
 
 
 if __name__ == '__main__':

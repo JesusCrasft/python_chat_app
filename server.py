@@ -1,7 +1,7 @@
 import socket 
 import threading
 
-HEADER = 1024
+HEADER = 64
 PORT = 8080
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
@@ -18,14 +18,16 @@ def  handle_client(conn, addr):
     while connected:
         msg_length = conn.recv(HEADER).decode(FORMAT)
         if msg_length:
-            if msg_length.isdigit():
-                msg_length = int(msg_length)
-                msg = conn.recv(msg_length).decode(FORMAT)
+            msg_length = int(msg_length)
+            msg = conn.recv(msg_length).decode(FORMAT)
 
-                if msg == DISCONNECT_MESSAGE:
-                    connected = False
+            if msg == DISCONNECT_MESSAGE:
+                connected = False
 
-                print(f"[{addr}] {msg}")
+            print(f"[{addr}] {msg}")
+
+            conn.send("True".encode(FORMAT))
+            print('Se envio el mensaje')
     
     conn.close()
 
