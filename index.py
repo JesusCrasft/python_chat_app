@@ -1,6 +1,5 @@
 from tkinter import ttk
 from tkinter import * 
-from tkscrolledframe import ScrolledFrame
 
 import socket
 
@@ -14,8 +13,7 @@ class App:
         self.wind.configure(bg='#1F1F1F')
 
         #Variables
-        self.my_socket = socket.socket()
-        self.username = ''
+        self.username = 'jesus'
         self.x = 0.80
         self.y = 0
        
@@ -64,24 +62,51 @@ class App:
         self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
 
 
-        """ScrolledFrame"""
-        #Create a ScrolledFrame widget
-        self.frame_helper = ScrolledFrame(self.label_chat)
-        self.frame_helper.pack(side=TOP, fill=BOTH, expand=1)
-        self.frame_helper.bind_scroll_wheel(self.wind)
+        """Chat"""
+        #ListBox
+        self.listbox_chat = Text(self.label_chat, font=('Arial', 15))
+        self.listbox_chat.configure(exportselection=False, bg='white', fg='gray', highlightbackground='gray')
+        self.listbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
 
-        #Create a frame within the ScrolledFrame
-        self.frame_chat = self.frame_helper.display_widget(Frame) 
-        
+        #ScrollBar
+        self.scrollbar_chat = Scrollbar(self.label_chat, command=self.listbox_chat.yview)
+        self.listbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
+        self.scrollbar_chat.configure(background='#444444', activebackground='gray')
+        self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
 
-
+    #Function to place the message that the user wrote
     def place_mymessage(self):
+        #Get the message
         message = self.entry_chat.get()
 
-        widget_message = Message(self.frame_chat, text=f'jesus {message}')
-        widget_message.grid()
+        #Insert the message in the chat
+        self.listbox_chat.insert(END, f'{self.username} : {message} \n')
+        
+        #Encode the message
+        message_encode = message.encode()
 
-        self.y = self.y + 0.10
+        #Sending message
+        self.send_mymessage(message_encode)
+
+    def send_mymessage(self, message):
+        sender = self.username.encode()
+        request = (sender, message)
+
+        #Create the socket
+        self.my_socket = socket.socket()
+
+        #Connect to host
+        self.my_socket.connect(('localhost', 8000))
+
+        #Send the message and sender
+        self.my_socket.sendall()
+
+        self.my_socket.close()
+
+
+    def place_hismessage(self):
+        pass
+
 
 
 if __name__ == '__main__':
