@@ -1,15 +1,14 @@
-import socket
+import socket 
+import threading
 
-my_socket = socket.socket()
+HEADER = 1024
+PORT = 8080
+SERVER = socket.gethostbyname(socket.gethostname)
+ADDR = (SERVER, PORT)
+FORMAT = 'utf-8'
+DISCONNECT_MESSAGE = "!DISCONNECT"
 
-my_socket.bind(('localhost', 8000))
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR)
 
-my_socket.listen(5)
 
-while True:
-    connection, adrr = my_socket.accept()
-    
-    request = connection.recv(2)
-    print(request)
-    connection.close()
-    
