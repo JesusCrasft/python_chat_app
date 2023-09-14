@@ -2,7 +2,7 @@ import socket
 import threading
 
 HEADER = 64
-PORT = 8081
+PORT = 8082
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -10,9 +10,17 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
+new_message = False
+message = "No hay mensajes por ahora"
+
 
 def  handle_client(conn, addr):
-    print(f"[NEW CONNECTION] {addr} connected.")
+    global new_message
+    global message
+
+    clients = []
+    clients.append(conn)
+
     connected = True
     while connected:
         msg_length = conn.recv(HEADER).decode(FORMAT)
@@ -24,39 +32,25 @@ def  handle_client(conn, addr):
 
             #Request Server
             if msg == 'request_server':
-                send_message(conn, addr)
-            
+                print(msg)
+                if new_message == True:
+                    for conns in clients:
+                        conns.send(message.encode(FORMAT)) 
+           
             #Response Client
             if msg == 'response_client':
-                recieve_message(conn, addr)
+                print(f"[NEW RESPONSE CONNECTION] {addr} connected.") 
+                new_message = True
+                print(new_message)
+                msg_length = conn.recv(HEADER).decode(FORMAT)
+                if msg_length:
+                    msg_length = int(msg_length)
+                    msg = conn.recv(msg_length).decode(FORMAT)
+                    message = msg   
 
-    conn.close()
-
-
-def recieve_message(conn, addr):
-    print(f"NEW Message From {addr}.")
-
-    connected = True
-    while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length:
-            msg_length = int(msg_length)
-            msg = conn.recv(msg_length).decode(FORMAT)
-
-            if msg == DISCONNECT_MESSAGE:
-                connected = False
-
-            send_message(conn, addr, msg)
-
-    conn.close()
-
-
-def send_message(conn, addr, msg):
-    conn.send(msg.encode(FORMAT))
-    conn.close
-    print("Enviado desde el servidor")
 
 def start():
+    print(new_message)
     server.listen()
     print(f"[LISTENING] Server is listening on {SERVER}")
     while True:

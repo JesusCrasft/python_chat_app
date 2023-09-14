@@ -1,7 +1,7 @@
 from tkinter import ttk
 from tkinter import * 
 
-import time
+import threading
 import socket
 
 class App:
@@ -15,17 +15,20 @@ class App:
 
         #Constants
         self.HEADER = 64
-        self.PORT = 8081
+        self.PORT = 8082
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
         #Variables
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
         self.username = 'jesus'
         self.x = 0.80
         self.y = 0
         self.arrived_message = "False"
+        self.recieve_length = 64
        
 
         """Labels"""
@@ -84,6 +87,8 @@ class App:
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
         
+        self.request_thread = threading.Thread(target=self.recieve_message)
+        self.request_thread.start()
 
     #Function to place the message
     def place_message(self):
@@ -100,59 +105,46 @@ class App:
 
     #Function to send the message and username
     def send_message(self, msg):
-        #Connect to server
-        client_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_send.connect(self.ADDR)
-        
         #Type of connection
-        client_send.send(self.length_message("response_client".encode(self.FORMAT))[0])
-        client_send.send(self.length_message("response_client".encode(self.FORMAT))[1])
+        self.client.send(self.length_message("response_client".encode(self.FORMAT))[0])
+        self.client.send(self.length_message("response_client".encode(self.FORMAT))[1])
 
         #Extract the length and encode the message
         send_length = self.length_message(msg)[0]
         message = self.length_message(msg)[1]
+        self.recieve_length = int(send_length)
 
         #Sending the message and the length
-        client_send.send(send_length)
-        client_send.send(message)
+        self.client.send(send_length)
+        self.client.send(message)
 
-        #End the connection
-        client_send.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
-        client_send.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1]) 
-
+        self.recieve_message()
 
     #Recieve message
-    def recieve_message(self, state=None):
-        if state == True:
-            #Connect to server
-            client_recv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_recv.connect(self.ADDR)
-            
-            #Type of connection
-            client_recv.send(self.length_message("request_server".encode(self.FORMAT))[0])
-            client_recv.send(self.length_message("request_server".encode(self.FORMAT))[1])
-
-            while True:
-                try:
-                    msg = client_recv.recv(1024).decode(self.FORMAT)
-                    print(msg)
-
-                except OSError:
-                    break
-            
-                    
-
-        elif state == False:
-            client_recv.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
-            client_recv.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1])
-
+    def recieve_message(self):  
+        #Type of connection
+        self.client.send(self.length_message("request_server".encode(self.FORMAT))[0])
+        self.client.send(self.length_message("request_server".encode(self.FORMAT))[1])
+        while True:
+            try:
+                msg = self.client.recv(int(self.recieve_length)).decode(self.FORMAT)
+                #self.listbox_chat.insert(END, "prueba")
+                print(msg)
+                break
+                
+            except Exception as ex:
+                print("An error ocurred")
+                self.client.close()
+                print(ex)
+                break
+                   
+    
     #Function to extract the length
     def length_message(self, msg):
         msg_length = len(msg)
         send_length = str(msg_length).encode(self.FORMAT)
         send_length += b' ' * (self.HEADER - len(send_length))
         return [send_length, msg]
-
 
 if __name__ == '__main__':
     WindowT = Tk()
