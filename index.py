@@ -15,7 +15,7 @@ class App:
 
         #Constants
         self.HEADER = 64
-        self.PORT = 8082
+        self.PORT = 8080
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "192.168.1.205"
@@ -67,7 +67,7 @@ class App:
 
         """Buttons"""
         #Chat Button
-        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.place_message)
+        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_message)
         self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
 
         #Image Button
@@ -89,22 +89,13 @@ class App:
         
         self.request_thread = threading.Thread(target=self.recieve_message)
         self.request_thread.start()
-
-    #Function to place the message
-    def place_message(self):
-        #Get the message
-        message = self.entry_chat.get()
-
-        #Insert the message in the chat
-        self.listbox_chat.insert(END, f'{self.username} : {message} \n')
-
-        #Sending message
-        message = message.encode(self.FORMAT)
-        self.send_message(message)
-
-
+ 
     #Function to send the message and username
-    def send_message(self, msg):
+    def send_message(self):
+        #Get the message
+        msg = self.entry_chat.get()
+        msg = msg.encode(self.FORMAT)
+
         #Type of connection
         self.client.send(self.length_message("response_client".encode(self.FORMAT))[0])
         self.client.send(self.length_message("response_client".encode(self.FORMAT))[1])
@@ -122,14 +113,14 @@ class App:
 
     #Recieve message
     def recieve_message(self):  
-        #Type of connection
-        self.client.send(self.length_message("request_server".encode(self.FORMAT))[0])
-        self.client.send(self.length_message("request_server".encode(self.FORMAT))[1])
+        
         while True:
+            #Type of connection
+            self.client.send(self.length_message("request_server".encode(self.FORMAT))[0])
+            self.client.send(self.length_message("request_server".encode(self.FORMAT))[1])
             try:
                 msg = self.client.recv(int(self.recieve_length)).decode(self.FORMAT)
-                #self.listbox_chat.insert(END, "prueba")
-                print(msg)
+                self.listbox_chat.insert(END, f"jesus : {msg} \n")
                 break
                 
             except Exception as ex:
@@ -138,7 +129,6 @@ class App:
                 print(ex)
                 break
                    
-    
     #Function to extract the length
     def length_message(self, msg):
         msg_length = len(msg)

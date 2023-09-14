@@ -2,7 +2,7 @@ import socket
 import threading
 
 HEADER = 64
-PORT = 8082
+PORT = 8080
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -12,30 +12,44 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 new_message = False
 message = "No hay mensajes por ahora"
+clients = []
+
+def broadcast_clients(message, clients):
+    for client in clients:
+        client.send(message.encode(FORMAT))
 
 
-def  handle_client(conn, addr):
-    global new_message
-    global message
-
-    clients = []
-    clients.append(conn)
-
-    connected = True
-    while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length:
+def messages_clients(client):
+     while True:
+          try:
+            msg_length = conn.recv(HEADER).decode(FORMAT)
+            if msg_length:
             msg_length = int(msg_length)
             msg = conn.recv(msg_length).decode(FORMAT)
+               
+     
 
-            #Type of connection
+def  handle_clients(conn, addr):
+    global new_message
+    global message
+    global clients
 
-            #Request Server
+    while True:
+            clients.append(conn)
+
+            wel_message = f"Jesus se unio al chat"
+            broadcast_clients(wel_message, clients)
+            conn.send("Conectado al server".encode(FORMAT))
+
+
+            messages_thread = threading.Thread(target=messages_clients, args=(addr))
+            messages_thread.start()
+
+            """#Request Server
             if msg == 'request_server':
-                print(msg)
                 if new_message == True:
-                    for conns in clients:
-                        conns.send(message.encode(FORMAT)) 
+                    for client in clients:
+                        client.send(message.encode(FORMAT)) 
            
             #Response Client
             if msg == 'response_client':
@@ -46,17 +60,16 @@ def  handle_client(conn, addr):
                 if msg_length:
                     msg_length = int(msg_length)
                     msg = conn.recv(msg_length).decode(FORMAT)
-                    message = msg   
+                    message = msg """  
 
 
 def start():
-    print(new_message)
     server.listen()
     print(f"[LISTENING] Server is listening on {SERVER}")
     while True:
         conn, addr = server.accept()
-        thread = threading.Thread(target=handle_client, args=(conn, addr))
-        thread.start()
+        handle_thread = threading.Thread(target=handle_clients, args=(conn, addr))
+        handle_thread.start()
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
 print("[STARTING] server is starting....")
