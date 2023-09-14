@@ -1,6 +1,7 @@
 from tkinter import ttk
 from tkinter import * 
 
+import time
 import threading
 import socket
 
@@ -14,8 +15,8 @@ class App:
         self.wind.configure(bg='#1F1F1F')
 
         #Constants
-        self.HEADER = 64
-        self.PORT = 8080
+        self.HEADER = 4064
+        self.PORT = 8902
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "192.168.1.205"
@@ -28,7 +29,7 @@ class App:
         self.x = 0.80
         self.y = 0
         self.arrived_message = "False"
-        self.recieve_length = 64
+        self.recieve_length = 4064
        
 
         """Labels"""
@@ -89,46 +90,38 @@ class App:
         
         self.request_thread = threading.Thread(target=self.recieve_message)
         self.request_thread.start()
- 
+
+        self.response_thread = threading.Thread(target=self.send_message)
+
     #Function to send the message and username
     def send_message(self):
         #Get the message
         msg = self.entry_chat.get()
         msg = msg.encode(self.FORMAT)
 
-        #Type of connection
-        self.client.send(self.length_message("response_client".encode(self.FORMAT))[0])
-        self.client.send(self.length_message("response_client".encode(self.FORMAT))[1])
-
         #Extract the length and encode the message
         send_length = self.length_message(msg)[0]
         message = self.length_message(msg)[1]
-        self.recieve_length = int(send_length)
+        self.recieve_length = send_length
 
         #Sending the message and the length
         self.client.send(send_length)
         self.client.send(message)
 
-        self.recieve_message()
-
     #Recieve message
     def recieve_message(self):  
-        
         while True:
-            #Type of connection
-            self.client.send(self.length_message("request_server".encode(self.FORMAT))[0])
-            self.client.send(self.length_message("request_server".encode(self.FORMAT))[1])
             try:
-                msg = self.client.recv(int(self.recieve_length)).decode(self.FORMAT)
+                self.recieve_length = int(self.recieve_length)
+                msg = self.client.recv(self.recieve_length * 90).decode(self.FORMAT)
                 self.listbox_chat.insert(END, f"jesus : {msg} \n")
-                break
                 
             except Exception as ex:
                 print("An error ocurred")
                 self.client.close()
                 print(ex)
                 break
-                   
+         
     #Function to extract the length
     def length_message(self, msg):
         msg_length = len(msg)
