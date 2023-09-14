@@ -1,6 +1,7 @@
 from tkinter import ttk
 from tkinter import * 
 
+import time
 import socket
 
 class App:
@@ -14,7 +15,7 @@ class App:
 
         #Constants
         self.HEADER = 64
-        self.PORT = 8080
+        self.PORT = 8081
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "192.168.1.205"
@@ -38,7 +39,7 @@ class App:
         self.label_contacts.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
         self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
 
-        #Chat Label
+        #Chat Laprint("listo")bel
         self.label_chat = Label(self.wind)
         self.label_chat.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
         self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
@@ -82,6 +83,7 @@ class App:
         self.listbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+        
 
     #Function to place the message
     def place_message(self):
@@ -99,34 +101,50 @@ class App:
     #Function to send the message and username
     def send_message(self, msg):
         #Connect to server
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect(self.ADDR)
+        client_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_send.connect(self.ADDR)
         
+        #Type of connection
+        client_send.send(self.length_message("response_client".encode(self.FORMAT))[0])
+        client_send.send(self.length_message("response_client".encode(self.FORMAT))[1])
+
         #Extract the length and encode the message
         send_length = self.length_message(msg)[0]
         message = self.length_message(msg)[1]
 
         #Sending the message and the length
-        self.client.send(send_length)
-        self.client.send(message)
+        client_send.send(send_length)
+        client_send.send(message)
 
         #End the connection
-        self.client.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
-        self.client.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1])
+        client_send.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
+        client_send.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1]) 
 
-        self.recieve_message()
-    
+
     #Recieve message
-    def recieve_message(self):
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect(self.ADDR)
+    def recieve_message(self, state=None):
+        if state == True:
+            #Connect to server
+            client_recv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_recv.connect(self.ADDR)
+            
+            #Type of connection
+            client_recv.send(self.length_message("request_server".encode(self.FORMAT))[0])
+            client_recv.send(self.length_message("request_server".encode(self.FORMAT))[1])
 
-        #New message
-        self.arrived_message = self.client.recv(1024).decode()
+            while True:
+                try:
+                    msg = client_recv.recv(1024).decode(self.FORMAT)
+                    print(msg)
 
-        while self.arrived_message != "False":
-            print(self.arrived_message)
-            self.arrived_message = "False"
+                except OSError:
+                    break
+            
+                    
+
+        elif state == False:
+            client_recv.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[0])
+            client_recv.send(self.length_message(self.DISCONNECT_MESSAGE.encode(self.FORMAT))[1])
 
     #Function to extract the length
     def length_message(self, msg):
