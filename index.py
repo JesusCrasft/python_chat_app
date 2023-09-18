@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8009
+        self.PORT = 8022
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT".encode(self.FORMAT)
         self.SERVER = "192.168.1.205"
@@ -31,7 +31,6 @@ class App:
         self.y = 0
         self.arrived_message = "False"
         self.recieve_length = 4064
-        self.type_connection = ["username", "message"]
        
 
         """Labels"""
@@ -88,7 +87,7 @@ class App:
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
         #Accept User Button
-        self.button_user = Button(self.label_user, text='Aceptar')
+        self.button_user = Button(self.label_user, text='Aceptar', command=self.select_username)
         self.button_user.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
 
 
@@ -105,48 +104,39 @@ class App:
         #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
         
         #Threads
-        self.request_thread = threading.Thread(target=self.recieve_message)
+        self.request_thread = threading.Thread(target=self.recieve_message, args=(True,))
+        self.request_stop = threading.Event()
+        #self.response_thread = threading.Thread(target=self.send_message)
         self.request_thread.start()
-        self.response_thread = threading.Thread(target=self.send_message)
-        
         self.Eventks()
 
     def Eventks(self):
         self.wind.protocol("WM_DELETE_WINDOW", self.closing_window)
 
     #Function to manage the closing window
-    def closing_window(self):
-        #Disconnect message length
-        send_length = self.length_message(self.DISCONNECT_MESSAGE)
-
-        self.recieve_message(connected=True)
-
-        #Sending the message and the length
-        self.client.send(send_length)
-        self.client.send(self.DISCONNECT_MESSAGE)
-        
+    def closing_window(self): 
+        self.request_stop.set()
         self.wind.destroy()
+        self.client.close()
 
     #Function to select username 
     def select_username(self):
-        #Get the username
+        self.chat_stage()
+
+        """#Get the username
         self.username = self.entry_user.get().encode(self.FORMAT)
 
         #Type connection
-        send_length = self.length_message(self.type_connection[0])#Username
+        send_length = self.length_message("username")#Username
         self.client.send(send_length)
-        self.client.send(self.type_connection[0])#Username
+        self.client.send("username".encode(self.FORMAT))#Username
         self.recieve_length = send_length
 
         #Extract the length and encode the message
         send_length = self.length_message(self.username)
-        self.recieve_length = send_length
+        self.recieve_length = send_length"""
 
-        #Sending the message and the length
-        self.client.send(send_length)
-        self.client.send(self.username)
-
-        self.chat_stage()
+        
 
     def chat_stage(self):
         self.entry_chat.place_forget()
@@ -155,7 +145,7 @@ class App:
 
         self.wind.geometry("900x700")
         self.wind.title("Chat")
-        
+
         self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
         self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
         self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
@@ -170,6 +160,13 @@ class App:
 
     #Function to send the message and username
     def send_message(self):
+        #Get the username
+        self.username = self.entry_user.get().encode(self.FORMAT)
+
+        #Sending the message and the length
+        self.client.send(send_length)
+        self.client.send(self.username)
+
         #Get the message
         message = self.entry_chat.get()
         message = message.encode(self.FORMAT)
@@ -183,17 +180,21 @@ class App:
         self.client.send(message)
 
     #Recieve message
-    def recieve_message(self, connected = None):  
-        while connected == None:
+    def recieve_message(self, connected):  
+        while connected:
             try:
-                self.recieve_length = int(self.recieve_length)
-                msg = self.client.recv(self.recieve_length * 90).decode(self.FORMAT)
-                self.textbox_chat.insert(END, f"{self.username} : {msg} \n")
-                
+                if self.request_stop.is_set():
+                    break
+                else:
+                    self.client.settimeout(1)
+                    self.recieve_length = int(self.recieve_length)
+                    msg = self.client.recv(self.recieve_length * 90).decode(self.FORMAT)
+                    self.textbox_chat.insert(END, f"{self.username} : {msg} \n")
+                    
             except Exception as ex:
-                print("Hay ocurrido este error", ex)
-            break
-         
+                continue
+       
+
     #Function to extract the length
     def length_message(self, msg):
         msg_length = len(msg)
