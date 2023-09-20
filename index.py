@@ -17,9 +17,9 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8065
+        self.PORT = 8080
         self.FORMAT = 'utf-8'
-        self.DISCONNECT_MESSAGE = "!DISCONNECT".encode(self.FORMAT)
+        self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -115,25 +115,12 @@ class App:
     def closing_window(self): 
         self.request_stop.set()
         self.wind.destroy()
+        self.client.send(self.length_message(self.DISCONNECT_MESSAGE))
+        self.client.send(self.DISCONNECT_MESSAGE)
 
     #Function to select username 
     def select_username(self):
         self.chat_stage()
-
-        """#Get the username
-        self.username = self.entry_user.get().encode(self.FORMAT)
-
-        #Type connection
-        send_length = self.length_message("username")#Username
-        self.client.send(send_length)
-        self.client.send("username".encode(self.FORMAT))#Username
-        self.recieve_length = send_length
-
-        #Extract the length and encode the message
-        send_length = self.length_message(self.username)
-        self.recieve_length = send_length"""
-
-        
 
     def chat_stage(self):
         self.entry_chat.place_forget()

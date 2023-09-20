@@ -3,7 +3,7 @@ import threading
 import pickle
 
 HEADER = 4064
-PORT = 8065
+PORT = 8080
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -32,14 +32,16 @@ def handle_messages(client):
             #Get the length
             data_length = client.recv(HEADER)
             data_two = data_length
+
             if data_length:
                 #Get the message and username
                 data_length = int(data_length)
                 data_str = client.recv(data_length)
-                data = pickle.dumps(data_str)
-
+                if pickle.loads(data_str) == DISCONNECT_MESSAGE:
+                    raise Exception("Client disconnect")
                 
-                broadcast_clients(data_two, data, client)
+                send_data = pickle.dumps(data_str)
+                broadcast_clients(data_two, send_data, client)
 
 
                 #Eval method
@@ -51,7 +53,7 @@ def handle_messages(client):
                 #broadcast_clients(data_length, data_str, client)
                 
         except Exception as ex:
-            print(ex)
+            print(ex, "messages")
             #broadcast_clients(f"Se desconecto Jesus \n", client)
             clients.remove(client)
             client.close()
