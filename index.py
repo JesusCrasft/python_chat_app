@@ -1,9 +1,9 @@
 from tkinter import ttk
 from tkinter import * 
 
-import time
 import threading
 import socket
+import pickle
 
 class App:
 
@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8022
+        self.PORT = 8065
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "!DISCONNECT".encode(self.FORMAT)
         self.SERVER = "192.168.1.205"
@@ -26,11 +26,9 @@ class App:
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.connect(self.ADDR)
-        self.username = ''
         self.x = 0.80
         self.y = 0
         self.arrived_message = "False"
-        self.recieve_length = 4064
        
 
         """Labels"""
@@ -117,7 +115,6 @@ class App:
     def closing_window(self): 
         self.request_stop.set()
         self.wind.destroy()
-        self.client.close()
 
     #Function to select username 
     def select_username(self):
@@ -160,45 +157,65 @@ class App:
 
     #Function to send the message and username
     def send_message(self):
-        #Get the username
-        self.username = self.entry_user.get().encode(self.FORMAT)
-
-        #Sending the message and the length
-        self.client.send(send_length)
-        self.client.send(self.username)
-
-        #Get the message
+        #Get the username and message
+        username = self.entry_user.get()
         message = self.entry_chat.get()
-        message = message.encode(self.FORMAT)
+
+        #Use pickle to send the data
+        data_list = [username, message]
+        data = pickle.dumps(data_list)
+
+        #Eval method
+        #data = str(data_list).encode(self.FORMAT)
+        #send_length = self.length_message(str(data))
 
         #Extract the length and encode the message
-        send_length = self.length_message(message)
-        self.recieve_length = send_length
+        send_length = self.length_message(str(data))
 
         #Sending the message and the length
         self.client.send(send_length)
-        self.client.send(message)
+        self.client.send(data)
 
+        
     #Recieve message
     def recieve_message(self, connected):  
         while connected:
             try:
                 if self.request_stop.is_set():
+                    self.client.close()
                     break
                 else:
                     self.client.settimeout(1)
-                    self.recieve_length = int(self.recieve_length)
-                    msg = self.client.recv(self.recieve_length * 90).decode(self.FORMAT)
-                    self.textbox_chat.insert(END, f"{self.username} : {msg} \n")
+                    length = self.client.recv(self.HEADER)
+                    data = self.client.recv(self.HEADER)
+                    if data == b'':
+                       continue 
+                    print(length, "length")
+                    print(data, "data")
                     
-            except Exception as ex:
+                    #data_list = self.client.recv(int(length))
+                    #data = pickle.loads(data_list)
+                    #username = data[0]
+                    #message = data[1]
+                    #self.textbox_chat.insert(END, f"{username} : {message} \n")
+
+                    #Eval method
+                    #length = self.client.recv(self.HEADER)
+                    #data = self.client.recv(int(length))
+                    #self.textbox_chat.insert(END, f"{self.username} : {msg} \n")
+                    
+            except TimeoutError:
                 continue
-       
+
+            except Exception as ex:
+                print(ex, "while")
+                self.client.close()
+                break
 
     #Function to extract the length
-    def length_message(self, msg):
-        msg_length = len(msg)
-        send_length = str(msg_length).encode(self.FORMAT)
+    def length_message(self, length):
+        data_length = len(length)
+        send_length = str(data_length).encode(self.FORMAT)
         send_length += b' ' * (self.HEADER - len(send_length))
         return send_length
 

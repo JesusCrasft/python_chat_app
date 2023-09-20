@@ -3,7 +3,7 @@ import threading
 import pickle
 
 HEADER = 4064
-PORT = 8022
+PORT = 8065
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -13,59 +13,69 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 clients = []
 usernames = []
-server.listen()
 
-def broadcast_clients(message, username, conn):
+def broadcast_clients(length, data, conn):
     global clients
     for client in clients:
-        client.send(username.encode(FORMAT))
-        client.send(message.encode(FORMAT))
+        print(client)
+        client.send(length)
+        client.send(data)
+        #client.send(username.encode(FORMAT))
+        #client.send(message.encode(FORMAT))
+        
 
 
 def handle_messages(client):
     global clients
     while True:
         try:
-            #Get the user
-            user_length = client.recv(HEADER).decode(FORMAT)
-            user_length = int(user_length)
-            user = client.recv(user_length).decode(FORMAT)
+            #Get the length
+            data_length = client.recv(HEADER)
+            data_two = data_length
+            if data_length:
+                #Get the message and username
+                data_length = int(data_length)
+                data_str = client.recv(data_length)
+                data = pickle.dumps(data_str)
 
-            #Get the message
-            msg_length = client.recv(HEADER).decode(FORMAT)
-            msg_length = int(msg_length)
-            msg = client.recv(msg_length).decode(FORMAT)
-
-            #Send the user and message
-            broadcast_clients(msg, user, client)
                 
+                broadcast_clients(data_two, data, client)
 
-        except:
-            broadcast_clients(f"Se desconecto Jesus \n", client)
+
+                #Eval method
+                #data = eval(data_str)
+                #print(data)
+                #data_length = str(data_length).encode(FORMAT)
+                
+                #Send the username, message and length
+                #broadcast_clients(data_length, data_str, client)
+                
+        except Exception as ex:
+            print(ex)
+            #broadcast_clients(f"Se desconecto Jesus \n", client)
             clients.remove(client)
             client.close()
             break 
 
 
-def handle_client(conn, addr):
-    global clients
-    clients.append(conn)
-    
-    wel_message = "Jesus se unio al chat \n"
-    broadcast_clients(wel_message, conn)
-    conn.send("Conectado al server \n".encode(FORMAT))
-
-    messages_thread = threading.Thread(target=messages_clients, args=(conn,))
-    messages_thread.start()
-
-def start():
-    print(f"[LISTENING] Server is listening on {SERVER}")
+def handle_client():
     while True:
+        server.listen()
+        print(f"[LISTENING] Server is listening on {SERVER}")
+
+        global clients
+
         conn, addr = server.accept()
-        handle_thread = threading.Thread(target=handle_client, args=(conn, addr))
-        handle_thread.start()
+        clients.append(conn)
+        
+        wel_message = "Jesus se unio al chat \n"
+        #broadcast_clients(wel_message, conn)
+        #conn.send("Conectado al server \n".encode(FORMAT))
+
+        messages_thread = threading.Thread(target=handle_messages, args=(conn,))
+        messages_thread.start()
+
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
-
 print("[STARTING] server is starting....")
-start()
+handle_client()
