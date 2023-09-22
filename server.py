@@ -1,9 +1,10 @@
 import socket 
 import threading
 import pickle
+import time
 
 HEADER = 4064
-PORT = 8080
+PORT = 8089
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -13,52 +14,84 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 clients = []
 usernames = []
+data = ''
+data_str = ''
+data_length = ''
 
-def broadcast_clients(length, data, conn):
+
+#Function to extract the length
+def length_convert(length):
+    length = pickle.loads(length)
+    length = str(length)
+    length = int(length)
+    return length
+
+#Function to extract the length
+def length_data(length):
+    length = str(length)
+    data_length = len(length)
+    send_length = str(data_length)
+    send_length = pickle.dumps(send_length)
+    send_length += b' ' * (HEADER - len(send_length))
+    return send_length
+    
+def broadcast_clients(length=None, data=None, conn=None):
     global clients
     for client in clients:
-        print(client)
         client.send(length)
         client.send(data)
-        #client.send(username.encode(FORMAT))
-        #client.send(message.encode(FORMAT))
-        
-
 
 def handle_messages(client):
     global clients
+    global data
+    global data_str
+    global data_length
+
     while True:
-        try:
-            #Get the length
-            data_length = client.recv(HEADER)
-            data_two = data_length
+            pass
+    
 
-            if data_length:
-                #Get the message and username
-                data_length = int(data_length)
-                data_str = client.recv(data_length)
-                if pickle.loads(data_str) == DISCONNECT_MESSAGE:
-                    raise Exception("Client disconnect")
-                
-                send_data = pickle.dumps(data_str)
-                broadcast_clients(data_two, send_data, client)
+def handle_disc(conn, addr):
+    global clients
+    global usernames
+    while True:
+        #length_client = conn.recv(HEADER)
+        print("?")
+        conn_client = conn.recv(HEADER)
+        if conn_client != b'':
+            for client in clients:
+                if client == pickle.loads(conn_client):
+                    print("wow")
+        
+        #conn_username = conn.recv(HEADER)
+        #print(pickle.loads(conn_username))
+
+            
+def users_online():
+    global clients
+    global usernames
+    while True:
+        for client in clients:
+            client.send(pickle.dumps("online_users"))
+            for user in usernames:
+                client.send(length_data(user))
+                client.send(pickle.dumps(user))
+                print(user)
+                time.sleep(3)
 
 
-                #Eval method
-                #data = eval(data_str)
-                #print(data)
-                #data_length = str(data_length).encode(FORMAT)
-                
-                #Send the username, message and length
-                #broadcast_clients(data_length, data_str, client)
-                
-        except Exception as ex:
-            print(ex, "messages")
-            #broadcast_clients(f"Se desconecto Jesus \n", client)
-            clients.remove(client)
-            client.close()
-            break 
+def type_connect(conn, addr):
+    global usernames
+    while True:
+        type_conn = conn.recv(HEADER)
+        if type_conn != b'':
+            if pickle.loads(type_conn) == "user":
+                user = conn.recv(HEADER)
+                if user != b'': 
+                    usernames.append(pickle.loads(user))
 
+            if pickle.loads(type_conn) == "disconnect":
+                    handle_disc(conn, addr)
 
 def handle_client():
     while True:
@@ -66,18 +99,23 @@ def handle_client():
         print(f"[LISTENING] Server is listening on {SERVER}")
 
         global clients
-
-        conn, addr = server.accept()
-        clients.append(conn)
         
-        wel_message = "Jesus se unio al chat \n"
-        #broadcast_clients(wel_message, conn)
-        #conn.send("Conectado al server \n".encode(FORMAT))
+        conn, addr = server.accept()
 
-        messages_thread = threading.Thread(target=handle_messages, args=(conn,))
-        messages_thread.start()
+        clients.append(conn)
 
-        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+        #messages_thread = threading.Thread(target=handle_messages, args=(conn,))
+        #messages_thread.start()
+
+        #userson_thread = threading.Thread(target=users_online)
+        #userson_thread.start()
+
+        typeco_thread = threading.Thread(target=type_connect, args=(conn, addr))
+        typeco_thread.start()
+        
+        discon_thread = threading.Thread(target=handle_disc, args=(conn, addr))
+
+        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}")
 
 print("[STARTING] server is starting....")
 handle_client()
