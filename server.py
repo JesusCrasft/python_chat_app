@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8011
+PORT = 8012
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -49,11 +49,13 @@ def handle_dms():
 #Function to send the users online to the clients        
 def users_online():
     global clients
-    print(list(clients.keys()), "Users online")
-
+    print(list(clients.keys()), "users online")
+    
+    #Send the users online
     for client in clients.values():
+        #Send the type of conn
         client.send(pickle.dumps("online_users"))
-        time.sleep(2)
+        time.sleep(1)
         client.send(pickle.dumps(list(clients.keys())))
 
 
@@ -96,6 +98,7 @@ def type_connect(conn, addr):
 def handle_client():
     server.listen()
     print(f"[LISTENING] Server is listening on {SERVER}")
+
     global clients
     while True:
         conn, addr = server.accept()

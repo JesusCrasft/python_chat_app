@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8011
+        self.PORT = 8012
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -100,11 +100,22 @@ class App:
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+
+
+        """ListBox"""
+        self.listbox_userson = Listbox(self.label_contacts)
+        self.listbox_userson.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
+        
+
+
+
         self.responses_stop = threading.Event()
         self.Eventks()
-        
+    
+    #Function to catch the events from tkinter
     def Eventks(self):
         self.wind.protocol("WM_DELETE_WINDOW", self.closing_window)
+
 
     #Function to manage the closing window
     def closing_window(self):
@@ -112,6 +123,7 @@ class App:
         self.responses_stop.set()
         self.wind.destroy()
         
+
     #Function to select username 
     def select_username(self):
         self.client.connect(self.ADDR)
@@ -125,6 +137,7 @@ class App:
         self.chat_stage()
 
         self.client.send(self.username_client)
+
 
     #Function to send the message and username
     def send_message(self):
@@ -150,7 +163,6 @@ class App:
             try:  
                 if self.responses_stop.is_set():
                     break
-
                 else:
                     #Pickle method    
                     #self.client.settimeout(1)
@@ -162,9 +174,12 @@ class App:
 
                         #Users online
                         if type_conn == "online_users":
-                            data = self.client.recv(self.HEADER)
-                            if data != b'':
-                                print(pickle.loads(data), "data") 
+                            users = self.client.recv(self.HEADER)
+                            if users != b'':
+                                users = pickle.loads(users)
+                                self.listbox_userson.delete(0, END)
+                                for user in  users:
+                                    self.listbox_userson.insert(0, user)
                                 
                                 #self.textbox_chat.insert(END, f"{username} : {message} \n")
 
@@ -189,6 +204,7 @@ class App:
         length = int(length)
         return length
     
+
     #Function to extract the length
     def length_message(self, length):
         length = str(length)
@@ -206,6 +222,7 @@ class App:
         self.wind.geometry("900x700")
         self.wind.title("Chat")
 
+        self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
         self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
         self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
