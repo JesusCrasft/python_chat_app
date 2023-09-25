@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8084
+        self.PORT = 8016
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -101,7 +101,6 @@ class App:
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
         self.responses_stop = threading.Event()
-        print(self.responses_stop)
         self.Eventks()
         
     def Eventks(self):
@@ -125,7 +124,6 @@ class App:
 
         self.chat_stage()
 
-        self.client.send(pickle.dumps("username"))
         self.client.send(self.username_client)
 
     #Function to send the message and username
@@ -149,31 +147,32 @@ class App:
     #Recieve message
     def recieve_responses(self):  
         while True:
-            if self.responses_stop != True:
-                try:
+            try:  
+                if self.responses_stop.is_set():
+                    break
+
+                else:
                     #Pickle method    
-                    self.client.settimeout(1)
+                    #self.client.settimeout(1)
                     type_conn = self.client.recv(self.HEADER) 
 
+                    #Type connection
                     if type_conn != b'':
-                        if pickle.loads(type_conn) == "online_users":
+                        type_conn = pickle.loads(type_conn)
+
+                        #Users online
+                        if type_conn == "online_users":
                             data = self.client.recv(self.HEADER)
-                            print(pickle.loads(data), "data")
+                            if data != b'':
+                                print(pickle.loads(data), "data") 
+                                
+                                #self.textbox_chat.insert(END, f"{username} : {message} \n")
 
-                        
-                        #self.textbox_chat.insert(END, f"{username} : {message} \n")
+            except TimeoutError:
+                continue
 
-                except TimeoutError:
-                    continue
-
-                except Exception as ex:
-                    print(ex, "recieve responses")
-                    self.wind.destroy()
-                    self.client.close()
-                    break
-            else:
-                
-                self.client.close()
+            except Exception as ex:
+                print(ex, "recieve responses")
                 break
         
     

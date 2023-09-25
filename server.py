@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8084
+PORT = 8016
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -48,49 +48,59 @@ def handle_messages(client):
 
     while True:
             pass
-    
 
-def handle_disc(conn, addr, username):
-    global clients
-    global usernames
-    
-    print(usernames)
-    print(pickle.loads(username))
-    usernames.remove(pickle.loads(username))
-    print(usernames)
-    conn.close()
-    clients.remove(conn)
-            
+
+#Function to send the users online to the clients        
 def users_online():
     global clients
     global usernames
-    while True:
-        for client in clients:
-            client.send(pickle.dumps("online_users"))
-            for user in usernames:
-                time.sleep(1)
-                client.send(pickle.dumps(user))
-                print(user)
+    print(usernames, "users online") 
 
+    for client in clients:
+        client.send(pickle.dumps("online_users"))
+        time.sleep(2)
+        client.send(pickle.dumps(usernames))
+        print("???")
 
+#Function to handle the disconnection from a client
+def handle_disc(conn, addr, username):
+    global usernames
+    global clients
+
+    #Remove the user and client from the lists
+    usernames.remove(pickle.loads(username))  
+    clients.remove(conn)
+    conn.close()
+    users_online() 
+
+#Function to know what type of connection the users wants
 def type_connect(conn, addr):
     global usernames
+    global clients
     while True:
-        type_conn = conn.recv(HEADER)
-        if type_conn != b'':
-            type_conn = pickle.loads(type_conn)
-            
-            if type_conn == "username":
-                username = conn.recv(HEADER)
-                usernames.append(pickle.loads(username))
-                continue
+        try:
+            type_conn = conn.recv(HEADER)
 
-            if type_conn == "disconnect":
-                username = conn.recv(HEADER)
-                handle_disc(conn, addr, username)
-                continue
+            #Type connection
+            if type_conn != b'':
+                type_conn = pickle.loads(type_conn)
+
+                #Disconnect client
+                if type_conn == "disconnect":
+                    username = conn.recv(HEADER) 
+                    if username != b'':       
+                        handle_disc(conn, addr, username)
+
+        #Bad file descriptor catch
+        except socket.error:
+            pass
+
+        except Exception as ex:
+            print(ex)
+            break
+                
                                   
-
+#Main function to handle the clients
 def handle_client():
     server.listen()
     print(f"[LISTENING] Server is listening on {SERVER}")
@@ -98,16 +108,21 @@ def handle_client():
     while True:
         conn, addr = server.accept()
 
+        #Recieve the username and append with the client in lists
+        username = conn.recv(HEADER)
+        usernames.append(pickle.loads(username))
         clients.append(conn)
 
         #messages_thread = threading.Thread(target=handle_messages, args=(conn,))
         #messages_thread.start()
 
+        #Type of connection thread
         typeco_thread = threading.Thread(target=type_connect, args=(conn, addr))
         typeco_thread.start()
 
-        #userson_thread = threading.Thread(target=users_online)
-        #userson_thread.start()
+        #Users on thread
+        userson_thread = threading.Thread(target=users_online, args=())
+        userson_thread.start()
 
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}")
 
