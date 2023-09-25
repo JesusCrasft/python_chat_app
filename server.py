@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8016
+PORT = 8011
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -12,8 +12,7 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
-clients = []
-usernames = []
+clients = {}
 data = ''
 data_str = ''
 data_length = ''
@@ -33,49 +32,42 @@ def length_data(length):
     send_length = pickle.dumps(send_length)
     send_length += b' ' * (HEADER - len(send_length))
     return send_length
-    
-def broadcast_clients(length=None, data=None, conn=None):
-    global clients
-    for client in clients:
-        client.send(length)
-        client.send(data)
 
-def handle_messages(client):
+#Function to handle messages to a group
+def handle_megroup():
     global clients
-    global data
-    global data_str
-    global data_length
 
-    while True:
-            pass
+    pass
+
+#Function to handle the direct msg
+def handle_dms():
+    global clients
+     
+    pass
 
 
 #Function to send the users online to the clients        
 def users_online():
     global clients
-    global usernames
-    print(usernames, "users online") 
+    print(list(clients.keys()), "Users online")
 
-    for client in clients:
+    for client in clients.values():
         client.send(pickle.dumps("online_users"))
         time.sleep(2)
-        client.send(pickle.dumps(usernames))
-        print("???")
+        client.send(pickle.dumps(list(clients.keys())))
+
 
 #Function to handle the disconnection from a client
 def handle_disc(conn, addr, username):
-    global usernames
     global clients
 
     #Remove the user and client from the lists
-    usernames.remove(pickle.loads(username))  
-    clients.remove(conn)
+    clients.pop(pickle.loads(username))  
     conn.close()
     users_online() 
 
 #Function to know what type of connection the users wants
 def type_connect(conn, addr):
-    global usernames
     global clients
     while True:
         try:
@@ -110,8 +102,7 @@ def handle_client():
 
         #Recieve the username and append with the client in lists
         username = conn.recv(HEADER)
-        usernames.append(pickle.loads(username))
-        clients.append(conn)
+        clients.update({pickle.loads(username): conn})
 
         #messages_thread = threading.Thread(target=handle_messages, args=(conn,))
         #messages_thread.start()

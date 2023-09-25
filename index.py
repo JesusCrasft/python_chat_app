@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8016
+        self.PORT = 8011
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
