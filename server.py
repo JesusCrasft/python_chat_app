@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8089
+PORT = 8084
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -17,7 +17,6 @@ usernames = []
 data = ''
 data_str = ''
 data_length = ''
-
 
 #Function to extract the length
 def length_convert(length):
@@ -51,21 +50,16 @@ def handle_messages(client):
             pass
     
 
-def handle_disc(conn, addr):
+def handle_disc(conn, addr, username):
     global clients
     global usernames
-    while True:
-        #length_client = conn.recv(HEADER)
-        print("?")
-        conn_client = conn.recv(HEADER)
-        if conn_client != b'':
-            for client in clients:
-                if client == pickle.loads(conn_client):
-                    print("wow")
-        
-        #conn_username = conn.recv(HEADER)
-        #print(pickle.loads(conn_username))
-
+    
+    print(usernames)
+    print(pickle.loads(username))
+    usernames.remove(pickle.loads(username))
+    print(usernames)
+    conn.close()
+    clients.remove(conn)
             
 def users_online():
     global clients
@@ -74,10 +68,9 @@ def users_online():
         for client in clients:
             client.send(pickle.dumps("online_users"))
             for user in usernames:
-                client.send(length_data(user))
+                time.sleep(1)
                 client.send(pickle.dumps(user))
                 print(user)
-                time.sleep(3)
 
 
 def type_connect(conn, addr):
@@ -85,21 +78,24 @@ def type_connect(conn, addr):
     while True:
         type_conn = conn.recv(HEADER)
         if type_conn != b'':
-            if pickle.loads(type_conn) == "user":
-                user = conn.recv(HEADER)
-                if user != b'': 
-                    usernames.append(pickle.loads(user))
+            type_conn = pickle.loads(type_conn)
+            
+            if type_conn == "username":
+                username = conn.recv(HEADER)
+                usernames.append(pickle.loads(username))
+                continue
 
-            if pickle.loads(type_conn) == "disconnect":
-                    handle_disc(conn, addr)
+            if type_conn == "disconnect":
+                username = conn.recv(HEADER)
+                handle_disc(conn, addr, username)
+                continue
+                                  
 
 def handle_client():
+    server.listen()
+    print(f"[LISTENING] Server is listening on {SERVER}")
+    global clients
     while True:
-        server.listen()
-        print(f"[LISTENING] Server is listening on {SERVER}")
-
-        global clients
-        
         conn, addr = server.accept()
 
         clients.append(conn)
@@ -107,13 +103,11 @@ def handle_client():
         #messages_thread = threading.Thread(target=handle_messages, args=(conn,))
         #messages_thread.start()
 
-        #userson_thread = threading.Thread(target=users_online)
-        #userson_thread.start()
-
         typeco_thread = threading.Thread(target=type_connect, args=(conn, addr))
         typeco_thread.start()
-        
-        discon_thread = threading.Thread(target=handle_disc, args=(conn, addr))
+
+        #userson_thread = threading.Thread(target=users_online)
+        #userson_thread.start()
 
         print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}")
 

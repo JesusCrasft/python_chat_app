@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8089
+        self.PORT = 8084
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -72,7 +72,7 @@ class App:
         self.entry_user = Entry(self.label_user, font=('Arial', 15))
         self.entry_user.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_user.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
-        self.entry_user.insert(END, "       Enter Username")
+        self.entry_user.insert(END, "jesus")
 
 
         """Buttons"""
@@ -100,7 +100,9 @@ class App:
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
-        #self.Eventks()
+        self.responses_stop = threading.Event()
+        print(self.responses_stop)
+        self.Eventks()
         
     def Eventks(self):
         self.wind.protocol("WM_DELETE_WINDOW", self.closing_window)
@@ -109,20 +111,22 @@ class App:
     def closing_window(self):
         self.disconnect_client()
         self.responses_stop.set()
+        self.wind.destroy()
         
     #Function to select username 
     def select_username(self):
         self.client.connect(self.ADDR)
         self.username_client = self.entry_user.get()
         self.username_client = pickle.dumps(self.username_client)
-
-        self.client.send(pickle.dumps("user"))
-        self.client.send(self.username_client)
+    
 
         self.responses_thread = threading.Thread(target=self.recieve_responses)
-        self.responses_stop = threading.Event()
         self.responses_thread.start()
+
         self.chat_stage()
+
+        self.client.send(pickle.dumps("username"))
+        self.client.send(self.username_client)
 
     #Function to send the message and username
     def send_message(self):
@@ -144,32 +148,38 @@ class App:
         
     #Recieve message
     def recieve_responses(self):  
-        while self.responses_stop == False:
-            try:
-                #Pickle method    
-                type_conn = self.client.recv(self.HEADER) 
+        while True:
+            if self.responses_stop != True:
+                try:
+                    #Pickle method    
+                    self.client.settimeout(1)
+                    type_conn = self.client.recv(self.HEADER) 
 
-                if pickle.loads(type_conn) == "online_users":
-                    length = self.client.recv(self.HEADER)
-                    data = self.client.recv(self.length_convert(length))
-                    print(pickle.loads(data))
+                    if type_conn != b'':
+                        if pickle.loads(type_conn) == "online_users":
+                            data = self.client.recv(self.HEADER)
+                            print(pickle.loads(data), "data")
 
-                    
-                    #self.textbox_chat.insert(END, f"{username} : {message} \n")
+                        
+                        #self.textbox_chat.insert(END, f"{username} : {message} \n")
 
-            except TimeoutError:
-                continue
+                except TimeoutError:
+                    continue
 
-            except Exception as ex:
-                print(ex, "recieve responses")
-                self.wind.destroy()
+                except Exception as ex:
+                    print(ex, "recieve responses")
+                    self.wind.destroy()
+                    self.client.close()
+                    break
+            else:
+                
                 self.client.close()
                 break
+        
     
     #Function to disconnect from server
-    def disconnect_client(self):
-        self.client.send(pickle.dumps("disconnect"))   
-        self.client.send(pickle.dumps(self.client))
+    def disconnect_client(self):   
+        self.client.send(pickle.dumps("disconnect"))
         self.client.send(self.username_client)
 
 
