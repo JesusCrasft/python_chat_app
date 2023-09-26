@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8012
+        self.PORT = 8015
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -25,6 +25,7 @@ class App:
 
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.ADDR)
         self.x = 0.80
         self.y = 0
         self.arrived_message = "False"
@@ -107,14 +108,21 @@ class App:
         self.listbox_userson.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
         
 
-
-
         self.responses_stop = threading.Event()
+        self.responses_thread = threading.Thread(target=self.recieve_responses)
+        self.responses_thread.start()
+
+        
         self.Eventks()
     
     #Function to catch the events from tkinter
     def Eventks(self):
+
+        #Window close event
         self.wind.protocol("WM_DELETE_WINDOW", self.closing_window)
+
+        #Listbox select
+        self.listbox_userson.bind('<<ListboxSelect>>', )
 
 
     #Function to manage the closing window
@@ -122,17 +130,11 @@ class App:
         self.disconnect_client()
         self.responses_stop.set()
         self.wind.destroy()
-        
 
     #Function to select username 
     def select_username(self):
-        self.client.connect(self.ADDR)
         self.username_client = self.entry_user.get()
         self.username_client = pickle.dumps(self.username_client)
-    
-
-        self.responses_thread = threading.Thread(target=self.recieve_responses)
-        self.responses_thread.start()
 
         self.chat_stage()
 
@@ -163,9 +165,7 @@ class App:
             try:  
                 if self.responses_stop.is_set():
                     break
-                else:
-                    #Pickle method    
-                    #self.client.settimeout(1)
+                else:   
                     type_conn = self.client.recv(self.HEADER) 
 
                     #Type connection
@@ -183,20 +183,15 @@ class App:
                                 
                                 #self.textbox_chat.insert(END, f"{username} : {message} \n")
 
-            except TimeoutError:
-                continue
-
             except Exception as ex:
                 print(ex, "recieve responses")
                 break
-        
     
     #Function to disconnect from server
     def disconnect_client(self):   
         self.client.send(pickle.dumps("disconnect"))
         self.client.send(self.username_client)
-
-
+        self.client.close()
     #Function to convert the length
     def length_convert(self, length):
         length = pickle.loads(length)
@@ -214,6 +209,7 @@ class App:
         send_length += b' ' * (self.HEADER - len(send_length))
         return send_length
 
+    
     def chat_stage(self):
         self.entry_chat.place_forget()
         self.button_user.place_forget()

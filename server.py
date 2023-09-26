@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8012
+PORT = 8015
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -69,27 +69,24 @@ def handle_disc(conn, addr, username):
     users_online() 
 
 #Function to know what type of connection the users wants
-def type_connect(conn, addr):
-    global clients
+def type_connect(conn=None, addr=None):
     while True:
+        global clients
         try:
             type_conn = conn.recv(HEADER)
-
+                
             #Type connection
             if type_conn != b'':
                 type_conn = pickle.loads(type_conn)
-
-                #Disconnect client
+                    
+                ##Disconnect client
                 if type_conn == "disconnect":
                     username = conn.recv(HEADER) 
-                    if username != b'':       
+                    if username != b'':     
                         handle_disc(conn, addr, username)
+                        break
 
-        #Bad file descriptor catch
-        except socket.error:
-            pass
-
-        except Exception as ex:
+        except Exception as ex: 
             print(ex)
             break
                 
@@ -98,11 +95,11 @@ def type_connect(conn, addr):
 def handle_client():
     server.listen()
     print(f"[LISTENING] Server is listening on {SERVER}")
-
-    global clients
     while True:
-        conn, addr = server.accept()
+        global clients
 
+        conn, addr = server.accept()
+        
         #Recieve the username and append with the client in lists
         username = conn.recv(HEADER)
         clients.update({pickle.loads(username): conn})
