@@ -17,7 +17,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8015
+        self.PORT = 8012
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -25,11 +25,11 @@ class App:
 
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect(self.ADDR)
         self.x = 0.80
         self.y = 0
         self.arrived_message = "False"
         self.username_client = ''
+        self.check_conn = [False, False]
        
 
         """Labels"""
@@ -73,7 +73,7 @@ class App:
         self.entry_user = Entry(self.label_user, font=('Arial', 15))
         self.entry_user.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_user.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
-        self.entry_user.insert(END, "jesus")
+        self.entry_user.insert(END, "CSDAW")
 
 
         """Buttons"""
@@ -86,7 +86,7 @@ class App:
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
         #Accept User Button
-        self.button_user = Button(self.label_user, text='Aceptar', command=self.select_username)
+        self.button_user = Button(self.label_user, text='Aceptar', command=self.check_client)
         self.button_user.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
 
 
@@ -109,8 +109,7 @@ class App:
         
 
         self.responses_stop = threading.Event()
-        self.responses_thread = threading.Thread(target=self.recieve_responses)
-        self.responses_thread.start()
+       
 
         
         self.Eventks()
@@ -129,16 +128,29 @@ class App:
     def closing_window(self):
         self.disconnect_client()
         self.responses_stop.set()
-        self.wind.destroy()
 
     #Function to select username 
-    def select_username(self):
+    def check_client(self):
+        #Check if client is already connected
+        try:
+            self.client.connect(self.ADDR)
+
+        except socket.error:
+            pass
+
+        #Get the username
         self.username_client = self.entry_user.get()
         self.username_client = pickle.dumps(self.username_client)
 
-        self.chat_stage()
-
+        #Send the username
         self.client.send(self.username_client)
+        
+        #Update check conn
+        self.check_conn[0] = True
+
+        #Active responses thread
+        self.responses_thread = threading.Thread(target=self.recieve_responses)
+        self.responses_thread.start()
 
 
     #Function to send the message and username
@@ -162,36 +174,69 @@ class App:
     #Recieve message
     def recieve_responses(self):  
         while True:
-            try:  
+            try:   
+                print("type 1")
+                type_conn = self.client.recv(self.HEADER) 
+                print("type 2")
+
+                #Flag to stop the while
                 if self.responses_stop.is_set():
+                    print("type 7")
                     break
-                else:   
-                    type_conn = self.client.recv(self.HEADER) 
 
-                    #Type connection
-                    if type_conn != b'':
-                        type_conn = pickle.loads(type_conn)
+                #Type connection
+                if type_conn != b'':
+                    type_conn = pickle.loads(type_conn)
+                    print("type 3")
 
-                        #Users online
-                        if type_conn == "online_users":
-                            users = self.client.recv(self.HEADER)
-                            if users != b'':
-                                users = pickle.loads(users)
-                                self.listbox_userson.delete(0, END)
-                                for user in  users:
-                                    self.listbox_userson.insert(0, user)
-                                
-                                #self.textbox_chat.insert(END, f"{username} : {message} \n")
+                    #Users online
+                    if type_conn == "online_users":
+                        print("type 4")
+                        users = self.client.recv(self.HEADER)
+                        if users != b'':
+                            users = pickle.loads(users)
+                            self.listbox_userson.delete(0, END)
+                            for user in  users:
+                                self.listbox_userson.insert(0, user)
+                        
+
+                    #Check invalid user
+                    if type_conn == "invalid_user":
+                        print("type 5")
+                        label_message = Message(self.label_user, text="The user is already online")
+                        label_message.place(relwidth = 0.70, relheight = 0.25, relx = 0.16, rely = 0.10)
+                        self.check_conn[1] = False
+                        break
+
+                    #Check valid user
+                    if type_conn == "valid_user":
+                        print("type 6")
+                        self.chat_stage()
+                        self.check_conn[1] = True
+                    
 
             except Exception as ex:
                 print(ex, "recieve responses")
                 break
     
+
     #Function to disconnect from server
     def disconnect_client(self):   
-        self.client.send(pickle.dumps("disconnect"))
-        self.client.send(self.username_client)
-        self.client.close()
+        if self.check_conn[0] == False:
+            self.wind.destroy()
+
+        elif self.check_conn[0] == True and self.check_conn[1] == False:
+            self.client.send(pickle.dumps("disconnect"))
+            self.client.close()
+            self.wind.destroy()
+
+        elif self.check_conn[0] == True and self.check_conn[1] == True:
+            self.client.send(pickle.dumps("disconnect"))
+            self.client.send(self.username_client)
+            self.client.close()
+            self.wind.destroy()
+
+
     #Function to convert the length
     def length_convert(self, length):
         length = pickle.loads(length)
