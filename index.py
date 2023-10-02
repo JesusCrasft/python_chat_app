@@ -1,6 +1,7 @@
 from tkinter import ttk
 from tkinter import * 
 
+import json 
 import threading
 import socket
 import pickle
@@ -17,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8012
+        self.PORT = 8016
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -78,7 +79,7 @@ class App:
 
         """Buttons"""
         #Chat Button
-        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_message)
+        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_dm)
         #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         
         #Image Button
@@ -92,15 +93,14 @@ class App:
 
         """Chat"""
         #Textbox
-        self.textbox_chat = Text(self.label_chat, font=('Arial', 15))
+        self.textbox_chat = Text(self.label_chat, font=('Arial', 15), state='disabled')
         self.textbox_chat.configure(exportselection=False, bg='white', fg='gray', highlightbackground='gray')
-        #self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
         
         #ScrollBar
         self.scrollbar_chat = Scrollbar(self.label_chat, command=self.textbox_chat.yview)
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
-        #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+        
 
 
         """ListBox"""
@@ -108,10 +108,7 @@ class App:
         self.listbox_userson.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
         
 
-        self.responses_stop = threading.Event()
-       
-
-        
+        self.responses_stop = threading.Event()  
         self.Eventks()
     
     #Function to catch the events from tkinter
@@ -121,13 +118,14 @@ class App:
         self.wind.protocol("WM_DELETE_WINDOW", self.closing_window)
 
         #Listbox select
-        self.listbox_userson.bind('<<ListboxSelect>>', )
+        self.listbox_userson.bind('<<ListboxSelect>>', self.select_chat)
 
 
     #Function to manage the closing window
     def closing_window(self):
-        self.disconnect_client()
         self.responses_stop.set()
+        self.disconnect_client()
+        
 
     #Function to select username 
     def check_client(self):
@@ -149,49 +147,42 @@ class App:
         self.check_conn[0] = True
 
         #Active responses thread
-        self.responses_thread = threading.Thread(target=self.recieve_responses)
+        self.responses_thread = threading.Thread(target=self.manage_recv)
         self.responses_thread.start()
 
 
     #Function to send the message and username
-    def send_message(self):
+    def send_dm(self):
         #Get the username and message
-        username = self.entry_user.get()
         message = self.entry_chat.get()
-        
+        receiver = self.listbox_userson.get(self.listbox_userson.curselection())
+
         #Use pickle to encode the data
-        data_list = [username, message]
+        data_list = [self.username_client, receiver, message]
         data = pickle.dumps(data_list)
 
-        #Extract the length
-        send_length = self.length_message(str(data))
-
         #Sending the message and the length
-        self.client.send(send_length)
+        self.client.send(pickle.dumps("dm_message"))
         self.client.send(data)
 
         
     #Recieve message
-    def recieve_responses(self):  
+    def manage_recv(self):  
         while True:
-            try:   
-                print("type 1")
-                type_conn = self.client.recv(self.HEADER) 
-                print("type 2")
+            #Flag to stop the while
+            if self.responses_stop.is_set():
+                break
 
-                #Flag to stop the while
-                if self.responses_stop.is_set():
-                    print("type 7")
-                    break
+            try:   
+                type_conn = self.client.recv(self.HEADER) 
+        
 
                 #Type connection
                 if type_conn != b'':
                     type_conn = pickle.loads(type_conn)
-                    print("type 3")
 
                     #Users online
                     if type_conn == "online_users":
-                        print("type 4")
                         users = self.client.recv(self.HEADER)
                         if users != b'':
                             users = pickle.loads(users)
@@ -200,9 +191,20 @@ class App:
                                 self.listbox_userson.insert(0, user)
                         
 
+                    #Handle Messages
+                    if type_conn == "dm_message":
+                        data = self.client.recv(self.HEADER)
+                        if data != b'':
+                            data = pickle.loads(data)
+                            sender = data[0]
+                            message = data[1]
+                            print(sender)
+                            print(message)
+
+
+
                     #Check invalid user
                     if type_conn == "invalid_user":
-                        print("type 5")
                         label_message = Message(self.label_user, text="The user is already online")
                         label_message.place(relwidth = 0.70, relheight = 0.25, relx = 0.16, rely = 0.10)
                         self.check_conn[1] = False
@@ -210,7 +212,6 @@ class App:
 
                     #Check valid user
                     if type_conn == "valid_user":
-                        print("type 6")
                         self.chat_stage()
                         self.check_conn[1] = True
                     
@@ -255,6 +256,21 @@ class App:
         return send_length
 
     
+
+    #Function to select a chat
+    def select_chat(self, key):
+        #Mount the select chat
+        self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
+        self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
+        self.textbox_chat.configure(state='normal')
+        self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
+        self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+        self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
+        self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
+
+
+
+    #Function to mount the chat stage
     def chat_stage(self):
         self.entry_chat.place_forget()
         self.button_user.place_forget()
@@ -270,10 +286,9 @@ class App:
         #self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
         self.entry_contacts.place(relwidth = 0.9999, relheight = 0.05, relx = 0.0, rely = 0.0)
         #self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
-        #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
-        #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         #self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
         #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+
 
 if __name__ == '__main__':
     WindowT = Tk()
