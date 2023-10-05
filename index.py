@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8004
+        self.PORT = 8005
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -35,7 +35,7 @@ class App:
 
         """Labels"""
         #Username Label
-        self.label_username = Label(self.wind, text='one')
+        self.label_username = Label(self.wind)
         self.label_username.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
         #self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
         
@@ -311,20 +311,21 @@ class App:
     
     #Function to select a chat
     def select_chat(self, key):
-        #Mount the select chat
-        self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
+        if self.listbox_userson.get(ANCHOR) != "":
+            #Mount the select chat
+            self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
 
-        #Chat
-        self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
+            #Chat
+            self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
+            
+            self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
         
-        self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
-    
-        #Entry and Buttons
-        self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
-        self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
-        self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
+            #Entry and Buttons
+            self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
+            self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
+            self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
 
-        self.refresh_chat()
+            self.refresh_chat()
 
 
     #Function to refresh a chat
@@ -359,6 +360,7 @@ class App:
 
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
+        self.label_username.configure(text=self.username_client)
         self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
         self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
         #self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
