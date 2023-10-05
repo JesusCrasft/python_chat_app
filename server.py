@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8003
+PORT = 8004
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -49,6 +49,9 @@ def handle_dms(sender, reciever, message):
     #Get the reciever conn
     reciever = clients.get(reciever)
     
+    #Message
+    message = f"{sender}: {message}"
+
     #Encode the data
     type_data = ["dm_message", sender, message]
     type_data = pickle.dumps(type_data)

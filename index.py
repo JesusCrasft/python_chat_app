@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8003
+        self.PORT = 8004
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -163,10 +163,16 @@ class App:
         #Sending the message and the length
         self.client.send(data_list)
 
+        #Message
+        message = f"{self.username_client}: {message}"
+
         #Manage the chat file
-        self.chats_files(receiver, message)
+        self.chats_files(receiver, message, type="write")
         
-    
+        #Refresh the chat
+        self.refresh_chat()
+
+
     #Recieve message
     def manage_recv(self):  
         while True:
@@ -192,14 +198,18 @@ class App:
                         message = type_data[2]
                         
                         #Manage the chat file
-                        self.chats_files(sender, message)
+                        self.chats_files(sender, message, type="write")
+
+                        if sender == self.listbox_userson.get(ANCHOR):
+                            self.refresh_chat()
                             
                     #Users online
                     if type_data[0] == "online_users":
                         print("type 3")
                         self.listbox_userson.delete(0, END)
                         for user in  type_data[1]:
-                            self.listbox_userson.insert(0, user)
+                            if user != self.username_client:
+                                self.listbox_userson.insert(0, user)
         
 
                     #Check invalid user
@@ -221,29 +231,48 @@ class App:
     
     
     #Function to manage the chat data from json
-    def chats_files(self, chat, message_str):
+    def chats_files(self, chat, message_str=None, type=None):
         messages = []
         message = []
         message.append(message_str)
-
+        print(message)
         #Try to open the file if exists
         try:
             #Extract the chat data
             with open(f"chats/{chat}_chat.json") as file:
                 chat_data = json.load(file)
 
-            messages = chat_data + message
-                            
-            #Save the messages in the chat data
-            with open(f"chats/{chat}_chat.json", "w") as file:
-                json.dump(messages, file)
+            #Write method
+            if type == "write":
+                
+                print("write 1")
+                messages = chat_data + message
+                print(messages)
+                                    
+                #Save the messages in the chat data
+                with open(f"chats/{chat}_chat.json", "w") as file:
+                    json.dump(messages, file)
+
+            #Open method
+            if type == "open":
+                print("open 1")
+                return chat_data
 
         #Create the chat if not exists
         except Exception as ex:
-            with open(f"chats/{chat}_chat.json", "w") as file:
-                json.dump(message, file)
 
+            #Write method
+            if type == "write":
+                print("write 2")
+                with open(f"chats/{chat}_chat.json", "w") as file:
+                    json.dump(message, file)
 
+            #Open method
+            if type == "open":
+                print("open 2")
+                return None
+
+        
     #Function to disconnect from server
     def disconnect_client(self):   
         if self.check_conn[0] == False:
@@ -280,18 +309,43 @@ class App:
         return send_length
 
     
-
     #Function to select a chat
     def select_chat(self, key):
         #Mount the select chat
         self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
+
+        #Chat
         self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
-        self.textbox_chat.configure(state='normal')
-        self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
+        
         self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+    
+        #Entry and Buttons
+        self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
         self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
 
+        self.refresh_chat()
+
+
+    #Function to refresh a chat
+    def refresh_chat(self):
+        #Chat the textbox state
+        self.textbox_chat.configure(state='normal')
+
+        #Get the chat user and the messages from the chat file
+        chat_user = self.listbox_userson.get(ANCHOR)
+        chat_data = self.chats_files(chat_user, type="open")
+        
+        #Delete the textbox
+        self.textbox_chat.delete("1.0", END)
+
+        #Validate if the chat file has messages
+        if chat_data != None:
+            for message in chat_data:
+                self.textbox_chat.insert(END, f"{message} \n")
+
+        #Change the textbox state
+        self.textbox_chat.configure(state='disabled')
 
 
     #Function to mount the chat stage
