@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8016
+PORT = 8003
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
@@ -50,12 +50,11 @@ def handle_dms(sender, reciever, message):
     reciever = clients.get(reciever)
     
     #Encode the data
-    data = [sender, message]
-    data = pickle.dumps(data)
+    type_data = ["dm_message", sender, message]
+    type_data = pickle.dumps(type_data)
     
     #Send the type and data
-    reciever.send(pickle.dumps('dm_message'))
-    reciever.send(data)
+    reciever.send(type_data)
 
 
 #Function to check if the username is available
@@ -89,16 +88,13 @@ def check_user(conn, addr, username):
 def users_online():
     global clients
     print(list(clients.keys()), "users online")
-    for client in list(clients.keys()):
-        if client == "disconnect":
-            clients.pop("disconnect")
-
+    
     #Send the users online
     for client in clients.values():
         #Send the type of conn
-        client.send(pickle.dumps("online_users"))
-        time.sleep(1)
-        client.send(pickle.dumps(list(clients.keys())))
+        type_data = ["online_users", list(clients.keys())]
+        type_data = pickle.dumps(type_data)
+        client.send(type_data)
 
 
 #Function to handle the disconnection from a client
@@ -107,7 +103,7 @@ def handle_disc(conn, addr, username=None, useroff=None):
 
     #Remove the user and client from the lists
     conn.close()
-    if useroff != False:
+    if useroff != None:
         clients.pop(pickle.loads(username))  
         users_online() 
 
@@ -117,29 +113,27 @@ def type_connect(conn=None, addr=None):
     while True:
         global clients
         try:
-            type_conn = conn.recv(HEADER)
+            type_data = conn.recv(HEADER)
             
             #Type connection
-            if type_conn != b'':
-                type_conn = pickle.loads(type_conn)
+            if type_data != b'':
+                type_data = pickle.loads(type_data)
                 
-
                 #Recieve message
-                if type_conn == 'dm_message':
-                    data = conn.recv(HEADER)
-                    if data != b'':
-                        data = pickle.loads(data)
-                        sender = data[0]
-                        reciever = data[1]
-                        message = data[2]
-                        handle_dms(pickle.loads(sender), reciever, message)
+                if type_data[0] == 'dm_message':
+                    sender = type_data[1]
+                    reciever = type_data[2]
+                    message = type_data[3]
+                    handle_dms(sender, reciever, message)
 
                 ##Disconnect client
-                if type_conn == "disconnect":
-                    username = conn.recv(HEADER) 
-                    if username != b'':   
-                        handle_disc(conn, addr, username)
-                        break
+                if type_data[0] == "disconnect_user":       
+                    handle_disc(conn, addr, pickle.dumps(type_data[1]), useroff=True)
+                    break
+
+                if type_data[0] == "disconnect_nouser":
+                    handle_disc(conn, addr, useroff=None)
+                    break
 
         except Exception as ex: 
             print(ex)

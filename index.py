@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8016
+        self.PORT = 8003
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
         self.SERVER = "192.168.1.205"
@@ -74,7 +74,7 @@ class App:
         self.entry_user = Entry(self.label_user, font=('Arial', 15))
         self.entry_user.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_user.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
-        self.entry_user.insert(END, "CSDAW")
+        self.entry_user.insert(END, "Jesus")
 
 
         """Buttons"""
@@ -138,10 +138,9 @@ class App:
 
         #Get the username
         self.username_client = self.entry_user.get()
-        self.username_client = pickle.dumps(self.username_client)
 
         #Send the username
-        self.client.send(self.username_client)
+        self.client.send(pickle.dumps(self.username_client))
         
         #Update check conn
         self.check_conn[0] = True
@@ -155,17 +154,19 @@ class App:
     def send_dm(self):
         #Get the username and message
         message = self.entry_chat.get()
-        receiver = self.listbox_userson.get(self.listbox_userson.curselection())
+        receiver = self.listbox_userson.get(ANCHOR)
 
         #Use pickle to encode the data
-        data_list = [self.username_client, receiver, message]
-        data = pickle.dumps(data_list)
+        data_list = ["dm_message", self.username_client, receiver, message]
+        data_list = pickle.dumps(data_list)
 
         #Sending the message and the length
-        self.client.send(pickle.dumps("dm_message"))
-        self.client.send(data)
+        self.client.send(data_list)
 
+        #Manage the chat file
+        self.chats_files(receiver, message)
         
+    
     #Recieve message
     def manage_recv(self):  
         while True:
@@ -174,44 +175,42 @@ class App:
                 break
 
             try:   
-                type_conn = self.client.recv(self.HEADER) 
+                print("type 1")
+                type_data = self.client.recv(self.HEADER) 
         
 
                 #Type connection
-                if type_conn != b'':
-                    type_conn = pickle.loads(type_conn)
+                if type_data != b'':
+                    print("type 2")
+                    type_data = pickle.loads(type_data)
+                    print(type_data, "type")
 
-                    #Users online
-                    if type_conn == "online_users":
-                        users = self.client.recv(self.HEADER)
-                        if users != b'':
-                            users = pickle.loads(users)
-                            self.listbox_userson.delete(0, END)
-                            for user in  users:
-                                self.listbox_userson.insert(0, user)
+                    #Handle Other Messages
+                    if type_data[0] == "dm_message":
+                        print("type 4")
+                        sender = type_data[1]
+                        message = type_data[2]
                         
-
-                    #Handle Messages
-                    if type_conn == "dm_message":
-                        data = self.client.recv(self.HEADER)
-                        if data != b'':
-                            data = pickle.loads(data)
-                            sender = data[0]
-                            message = data[1]
-                            print(sender)
-                            print(message)
-
-
+                        #Manage the chat file
+                        self.chats_files(sender, message)
+                            
+                    #Users online
+                    if type_data[0] == "online_users":
+                        print("type 3")
+                        self.listbox_userson.delete(0, END)
+                        for user in  type_data[1]:
+                            self.listbox_userson.insert(0, user)
+        
 
                     #Check invalid user
-                    if type_conn == "invalid_user":
+                    if type_data == "invalid_user":
                         label_message = Message(self.label_user, text="The user is already online")
                         label_message.place(relwidth = 0.70, relheight = 0.25, relx = 0.16, rely = 0.10)
                         self.check_conn[1] = False
                         break
 
                     #Check valid user
-                    if type_conn == "valid_user":
+                    if type_data == "valid_user":
                         self.chat_stage()
                         self.check_conn[1] = True
                     
@@ -220,6 +219,30 @@ class App:
                 print(ex, "recieve responses")
                 break
     
+    
+    #Function to manage the chat data from json
+    def chats_files(self, chat, message_str):
+        messages = []
+        message = []
+        message.append(message_str)
+
+        #Try to open the file if exists
+        try:
+            #Extract the chat data
+            with open(f"chats/{chat}_chat.json") as file:
+                chat_data = json.load(file)
+
+            messages = chat_data + message
+                            
+            #Save the messages in the chat data
+            with open(f"chats/{chat}_chat.json", "w") as file:
+                json.dump(messages, file)
+
+        #Create the chat if not exists
+        except Exception as ex:
+            with open(f"chats/{chat}_chat.json", "w") as file:
+                json.dump(message, file)
+
 
     #Function to disconnect from server
     def disconnect_client(self):   
@@ -227,13 +250,14 @@ class App:
             self.wind.destroy()
 
         elif self.check_conn[0] == True and self.check_conn[1] == False:
-            self.client.send(pickle.dumps("disconnect"))
+            self.client.send(pickle.dumps("disconnect_nouser"))
             self.client.close()
             self.wind.destroy()
 
         elif self.check_conn[0] == True and self.check_conn[1] == True:
-            self.client.send(pickle.dumps("disconnect"))
-            self.client.send(self.username_client)
+            type_data = ["disconnect_user", self.username_client]
+            type_data = pickle.dumps(type_data)
+            self.client.send(type_data)
             self.client.close()
             self.wind.destroy()
 
