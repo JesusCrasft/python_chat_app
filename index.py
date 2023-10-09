@@ -18,17 +18,12 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8005
-        self.FORMAT = 'utf-8'
-        self.DISCONNECT_MESSAGE = pickle.dumps("!DISCONNECT")
+        self.PORT = 8006
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.x = 0.80
-        self.y = 0
-        self.arrived_message = "False"
         self.username_client = ''
         self.check_conn = [False, False]
        
@@ -40,13 +35,13 @@ class App:
         #self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
         
         #Contacts Label
-        self.label_contacts = Label(self.wind, text='two')
+        self.label_contacts = Label(self.wind)
         self.label_contacts.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
-        #self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
+        #self.label_contacts.place(relwidth = 0.30, relheight = 0.95, relx = 0.0, rely = 0.09)
         
         #Chat Label
-        self.label_chat = Label(self.wind)
-        self.label_chat.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
+        self.label_chat = Label(self.wind, text="Seleccione un Chat para comenzar a chatear")
+        self.label_chat.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray', font=('Arial', 15))
         #self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
         
         #Widget Chat Label
@@ -59,12 +54,11 @@ class App:
         self.label_user.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
         self.label_user.place(relwidth = 0.9999, relheight = 0.9999, relx = 0.0, rely = 0.0)
 
+        #Chat Type
+        self.label_chatype = Label(self.label_contacts, text='Online Users')
+        self.label_chatype.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
+
         """Entrys"""
-        #Contacts Chat
-        self.entry_contacts = Entry(self.label_contacts, font=('Arial', 15))
-        self.entry_contacts.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
-        #self.entry_contacts.place(relwidth = 0.9999, relheight = 0.05, relx = 0.0, rely = 0.0)
-        
         #Chat Entry
         self.entry_chat = Entry(self.label_wchat, font=('Arial', 15))
         self.entry_chat.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
@@ -74,8 +68,6 @@ class App:
         self.entry_user = Entry(self.label_user, font=('Arial', 15))
         self.entry_user.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
         self.entry_user.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
-        self.entry_user.insert(END, "Jesus")
-
 
         """Buttons"""
         #Chat Button
@@ -86,10 +78,21 @@ class App:
         self.button_sendimg = Button(self.label_wchat, text='Imagen')
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
+        #DM Button
+        self.button_seldms = Button(self.label_contacts, text='Messages', font=('Arial', 10), command=lambda m="": self.manage_send("req_online_users"))
+        self.button_seldms.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='white')
+
+        #Groups Button
+        self.button_selgroups = Button(self.label_contacts, text='Groups', font=('Arial', 10))
+        self.button_selgroups.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='white')
+
         #Accept User Button
-        self.button_user = Button(self.label_user, text='Aceptar', command=self.check_client)
+        self.button_user = Button(self.label_user, text='Aceptar', command=self.check_client, state='disabled')
         self.button_user.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
 
+        """Others"""
+        self.listbox_userson = Listbox(self.label_contacts)
+        self.listbox_userson.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
 
         """Chat"""
         #Textbox
@@ -101,13 +104,7 @@ class App:
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
         self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         
-
-
-        """ListBox"""
-        self.listbox_userson = Listbox(self.label_contacts)
-        self.listbox_userson.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
-        
-
+        #Functions
         self.responses_stop = threading.Event()  
         self.Eventks()
     
@@ -120,12 +117,9 @@ class App:
         #Listbox select
         self.listbox_userson.bind('<<ListboxSelect>>', self.select_chat)
 
+        #Button release
+        self.entry_user.bind("<KeyRelease>", self.validate_buttons)
 
-    #Function to manage the closing window
-    def closing_window(self):
-        self.responses_stop.set()
-        self.disconnect_client()
-        
 
     #Function to select username 
     def check_client(self):
@@ -150,30 +144,7 @@ class App:
         self.responses_thread.start()
 
 
-    #Function to send the message and username
-    def send_dm(self):
-        #Get the username and message
-        message = self.entry_chat.get()
-        receiver = self.listbox_userson.get(ANCHOR)
-
-        #Use pickle to encode the data
-        data_list = ["dm_message", self.username_client, receiver, message]
-        data_list = pickle.dumps(data_list)
-
-        #Sending the message and the length
-        self.client.send(data_list)
-
-        #Message
-        message = f"{self.username_client}: {message}"
-
-        #Manage the chat file
-        self.chats_files(receiver, message, type="write")
-        
-        #Refresh the chat
-        self.refresh_chat()
-
-
-    #Recieve message
+    #Function to manage all the recvs
     def manage_recv(self):  
         while True:
             #Flag to stop the while
@@ -181,19 +152,14 @@ class App:
                 break
 
             try:   
-                print("type 1")
                 type_data = self.client.recv(self.HEADER) 
         
-
                 #Type connection
-                if type_data != b'':
-                    print("type 2")
+                if type_data != b'':  
                     type_data = pickle.loads(type_data)
-                    print(type_data, "type")
 
                     #Handle Other Messages
                     if type_data[0] == "dm_message":
-                        print("type 4")
                         sender = type_data[1]
                         message = type_data[2]
                         
@@ -205,8 +171,8 @@ class App:
                             
                     #Users online
                     if type_data[0] == "online_users":
-                        print("type 3")
                         self.listbox_userson.delete(0, END)
+                        print("blink")
                         for user in  type_data[1]:
                             if user != self.username_client:
                                 self.listbox_userson.insert(0, user)
@@ -228,6 +194,41 @@ class App:
             except Exception as ex:
                 print(ex, "recieve responses")
                 break
+
+    
+    #Function to manage a few sends
+    def manage_send(self, *args):
+        for value in args:
+            
+            #Request Online Users
+            if value == "req_online_users":
+                type_data = ["req_online_users", self.username_client]
+                type_data = pickle.dumps(type_data)
+                self.client.send(type_data)
+                print("data req")
+
+
+    #Function to send the message and username
+    def send_dm(self):
+        #Get the username and message
+        message = self.entry_chat.get()
+        receiver = self.listbox_userson.get(ANCHOR)
+
+        #Use pickle to encode the data
+        data_list = ["dm_message", self.username_client, receiver, message]
+        data_list = pickle.dumps(data_list)
+
+        #Sending the message and the length
+        self.client.send(data_list)
+
+        #Message
+        message = f"{self.username_client}: {message}"
+
+        #Manage the chat file
+        self.chats_files(receiver, message, type="write")
+        
+        #Refresh the chat
+        self.refresh_chat()
     
     
     #Function to manage the chat data from json
@@ -235,7 +236,7 @@ class App:
         messages = []
         message = []
         message.append(message_str)
-        print(message)
+        
         #Try to open the file if exists
         try:
             #Extract the chat data
@@ -244,10 +245,7 @@ class App:
 
             #Write method
             if type == "write":
-                
-                print("write 1")
                 messages = chat_data + message
-                print(messages)
                                     
                 #Save the messages in the chat data
                 with open(f"chats/{chat}_chat.json", "w") as file:
@@ -255,7 +253,6 @@ class App:
 
             #Open method
             if type == "open":
-                print("open 1")
                 return chat_data
 
         #Create the chat if not exists
@@ -263,69 +260,12 @@ class App:
 
             #Write method
             if type == "write":
-                print("write 2")
                 with open(f"chats/{chat}_chat.json", "w") as file:
                     json.dump(message, file)
 
             #Open method
             if type == "open":
-                print("open 2")
                 return None
-
-        
-    #Function to disconnect from server
-    def disconnect_client(self):   
-        if self.check_conn[0] == False:
-            self.wind.destroy()
-
-        elif self.check_conn[0] == True and self.check_conn[1] == False:
-            self.client.send(pickle.dumps("disconnect_nouser"))
-            self.client.close()
-            self.wind.destroy()
-
-        elif self.check_conn[0] == True and self.check_conn[1] == True:
-            type_data = ["disconnect_user", self.username_client]
-            type_data = pickle.dumps(type_data)
-            self.client.send(type_data)
-            self.client.close()
-            self.wind.destroy()
-
-
-    #Function to convert the length
-    def length_convert(self, length):
-        length = pickle.loads(length)
-        length = str(length)
-        length = int(length)
-        return length
-    
-
-    #Function to extract the length
-    def length_message(self, length):
-        length = str(length)
-        data_length = len(length)
-        send_length = str(data_length)
-        send_length = pickle.dumps(send_length)
-        send_length += b' ' * (self.HEADER - len(send_length))
-        return send_length
-
-    
-    #Function to select a chat
-    def select_chat(self, key):
-        if self.listbox_userson.get(ANCHOR) != "":
-            #Mount the select chat
-            self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
-
-            #Chat
-            self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
-            
-            self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
-        
-            #Entry and Buttons
-            self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
-            self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
-            self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
-
-            self.refresh_chat()
 
 
     #Function to refresh a chat
@@ -349,6 +289,61 @@ class App:
         self.textbox_chat.configure(state='disabled')
 
 
+    #Function to disconnect from server
+    def disconnect_client(self):   
+        if self.check_conn[0] == False:
+            self.wind.destroy()
+
+        elif self.check_conn[0] == True and self.check_conn[1] == False:
+            self.client.send(pickle.dumps("disconnect_nouser"))
+            self.client.close()
+            self.wind.destroy()
+
+        elif self.check_conn[0] == True and self.check_conn[1] == True:
+            type_data = ["disconnect_user", self.username_client]
+            type_data = pickle.dumps(type_data)
+            self.client.send(type_data)
+            self.client.close()
+            self.wind.destroy()
+
+
+    #Function to manage the closing window
+    def closing_window(self):
+        self.responses_stop.set()
+        self.disconnect_client()
+        
+
+    #Function to select a chat
+    def select_chat(self, key):
+        if self.listbox_userson.get(ANCHOR) != "":
+            #Mount the select chat
+            self.label_chat.place(relheight=0.90)
+            self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
+
+            #Chat
+            self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
+            
+            self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+        
+            #Entry and Buttons
+            self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
+            self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
+            self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
+
+            self.refresh_chat()
+
+
+    #Function to validate buttons
+    def validate_buttons(self, key):
+        username = self.entry_user.get()
+
+        while username != '' and username.isspace() == False:
+            self.button_user.configure(state='normal')
+            break
+        else:
+            self.button_user.configure(state='disabled')
+
+
     #Function to mount the chat stage
     def chat_stage(self):
         self.entry_chat.place_forget()
@@ -358,16 +353,21 @@ class App:
         self.wind.geometry("900x700")
         self.wind.title("Chat")
 
-        self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
-        self.label_username.place(relwidth = 0.30, relheight = 0.09, relx = 0.0, rely = 0.0)
+        #Labels
+        self.label_contacts.place(relwidth = 0.30, relheight = 0.95, relx = 0.0, rely = 0.05)
+        self.label_username.place(relwidth = 0.30, relheight = 0.05, relx = 0.0, rely = 0.0)
+        self.label_chat.place(relwidth = 0.70, relheight = 0.999, relx = 0.30, rely = 0.0)
         self.label_username.configure(text=self.username_client)
-        self.label_contacts.place(relwidth = 0.30, relheight = 0.91, relx = 0.0, rely = 0.09)
-        self.label_chat.place(relwidth = 0.70, relheight = 0.90, relx = 0.30, rely = 0.0)
-        #self.label_wchat.place(relwidth = 0.70, relheight = 0.10, relx = 0.30, rely = 0.90)
-        self.entry_contacts.place(relwidth = 0.9999, relheight = 0.05, relx = 0.0, rely = 0.0)
-        #self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
-        #self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
-        #self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
+        
+        #Buttons
+        self.button_seldms.place(relwidth=0.50, relheight=0.05, relx=0, rely=0)
+        self.button_selgroups.place(relwidth=0.50, relheight=0.05, relx=0.50, rely=0)
+        
+        #Other
+        self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
+        self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
+
+
 
 
 if __name__ == '__main__':
