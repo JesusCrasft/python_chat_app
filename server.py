@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8006
+PORT = 8008
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -66,10 +66,11 @@ def check_user(conn, addr, username):
 
 
 #Function to send the users online to the clients        
-def users_online(req, reciever):
+def users_online(req=None, reciever=None):
     global clients
     print(list(clients.keys()), "users online")
-    print("?")
+    
+
     #Validation
     if req == True:
         #Send the users online to a single user
@@ -77,7 +78,6 @@ def users_online(req, reciever):
         type_data = ["online_users", list(clients.keys())]
         type_data = pickle.dumps(type_data)
         reciever.send(type_data)
-        print("wow")
 
     else:
         #Send the users online to all the users
@@ -130,7 +130,6 @@ def manage_recv(conn=None, addr=None):
                 #Request Online Users
                 if type_data[0] == "req_online_users":
                     users_online(req=True, reciever=type_data[1])
-                    print("yep")
 
         except Exception as ex: 
             print(ex)

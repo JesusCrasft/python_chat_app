@@ -18,14 +18,23 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8006
+        self.PORT = 8008
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.username_client = ''
-        self.check_conn = [False, False]
+        self.flags = {
+            #Connected to server
+            "connected": False,
+            #Validation user
+            "user": False,
+            #dms chat type
+            "dms": True,
+            #groups chat type
+            "groups": False
+        }
        
 
         """Labels"""
@@ -71,7 +80,7 @@ class App:
 
         """Buttons"""
         #Chat Button
-        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_dm)
+        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_dm, state='disabled')
         #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         
         #Image Button
@@ -118,7 +127,11 @@ class App:
         self.listbox_userson.bind('<<ListboxSelect>>', self.select_chat)
 
         #Button release
-        self.entry_user.bind("<KeyRelease>", self.validate_buttons)
+        self.entry_user.bind("<KeyRelease>", lambda m="": self.validate_buttons("button_user"))
+        self.entry_chat.bind("<KeyRelease>", lambda m="": self.validate_buttons("button_chat"))
+
+        #Keys
+        self.wind.bind("<Return>", lambda m="": self.validate_buttons("enter_key"))
 
 
     #Function to select username 
@@ -137,7 +150,7 @@ class App:
         self.client.send(pickle.dumps(self.username_client))
         
         #Update check conn
-        self.check_conn[0] = True
+        self.flags.update({"connected": True})
 
         #Active responses thread
         self.responses_thread = threading.Thread(target=self.manage_recv)
@@ -172,23 +185,25 @@ class App:
                     #Users online
                     if type_data[0] == "online_users":
                         self.listbox_userson.delete(0, END)
-                        print("blink")
-                        for user in  type_data[1]:
-                            if user != self.username_client:
-                                self.listbox_userson.insert(0, user)
+                        
+                        #Validation "Messages" and "Groups"
+                        if self.flags.get("dms") == True:
+                            for user in  type_data[1]:
+                                if user != self.username_client:
+                                    self.listbox_userson.insert(0, user)
         
 
                     #Check invalid user
                     if type_data == "invalid_user":
                         label_message = Message(self.label_user, text="The user is already online")
                         label_message.place(relwidth = 0.70, relheight = 0.25, relx = 0.16, rely = 0.10)
-                        self.check_conn[1] = False
+                        self.flags.update({"user": False})
                         break
 
                     #Check valid user
                     if type_data == "valid_user":
                         self.chat_stage()
-                        self.check_conn[1] = True
+                        self.flags.update({"user": True})
                     
 
             except Exception as ex:
@@ -202,10 +217,13 @@ class App:
             
             #Request Online Users
             if value == "req_online_users":
+                #Request the data
                 type_data = ["req_online_users", self.username_client]
                 type_data = pickle.dumps(type_data)
                 self.client.send(type_data)
-                print("data req")
+                
+                #Check "Messages" True
+                self.check_chatype[0] = True
 
 
     #Function to send the message and username
@@ -229,6 +247,9 @@ class App:
         
         #Refresh the chat
         self.refresh_chat()
+
+        #Delete the entry
+        self.entry_chat.delete(0, END)
     
     
     #Function to manage the chat data from json
@@ -291,15 +312,15 @@ class App:
 
     #Function to disconnect from server
     def disconnect_client(self):   
-        if self.check_conn[0] == False:
+        if self.flags.get("connected") == False:
             self.wind.destroy()
 
-        elif self.check_conn[0] == True and self.check_conn[1] == False:
+        elif self.flags.get("connected") == True and self.flags.get("user") == False:
             self.client.send(pickle.dumps("disconnect_nouser"))
             self.client.close()
             self.wind.destroy()
 
-        elif self.check_conn[0] == True and self.check_conn[1] == True:
+        elif self.flags.get("connected") == True and self.flags.get("user") == True:
             type_data = ["disconnect_user", self.username_client]
             type_data = pickle.dumps(type_data)
             self.client.send(type_data)
@@ -334,14 +355,30 @@ class App:
 
 
     #Function to validate buttons
-    def validate_buttons(self, key):
+    def validate_buttons(self, *args):
         username = self.entry_user.get()
+        entry = self.entry_chat.get()
 
-        while username != '' and username.isspace() == False:
-            self.button_user.configure(state='normal')
-            break
-        else:
-            self.button_user.configure(state='disabled')
+        for value in args:
+            #Entry user validation
+            if value == "button_user":
+                while username != '' and username.isspace() == False:
+                    self.button_user.configure(state='normal')
+                    break
+                else:
+                    self.button_user.configure(state='disabled')
+
+            #Entry chat validation
+            if value == "button_chat":
+                while entry != '' and entry.isspace() == False:
+                    self.button_chat.configure(state='normal')
+                    break
+                else:
+                    self.button_chat.configure(state='disabled')
+
+            #Bind the enter button
+            if value == "enter_key":
+                pass
 
 
     #Function to mount the chat stage
