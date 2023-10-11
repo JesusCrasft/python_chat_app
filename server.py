@@ -4,13 +4,14 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8008
+PORT = 8009
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 clients = {}
+groups = {}
 
 
 #Function to handle messages to a group
@@ -23,6 +24,7 @@ def handle_megroup():
 #Function to handle the direct msg
 def handle_dms(sender, reciever, message):
     global clients
+    global groups
 
     #Get the reciever conn
     reciever = clients.get(reciever)
@@ -41,6 +43,7 @@ def handle_dms(sender, reciever, message):
 #Function to check if the username is available
 def check_user(conn, addr, username):
     global clients
+    global groups
 
     if pickle.loads(username) in list(clients.keys()):
         conn.send(pickle.dumps("invalid_user"))
@@ -68,6 +71,7 @@ def check_user(conn, addr, username):
 #Function to send the users online to the clients        
 def users_online(req=None, reciever=None):
     global clients
+    global groups
     print(list(clients.keys()), "users online")
     
 
@@ -92,6 +96,7 @@ def users_online(req=None, reciever=None):
 #Function to handle the disconnection from a client
 def handle_disc(conn, addr, username=None, useroff=None):
     global clients
+    global groups
 
     #Remove the user and client from the lists
     conn.close()
@@ -104,6 +109,8 @@ def handle_disc(conn, addr, username=None, useroff=None):
 def manage_recv(conn=None, addr=None):
     while True:
         global clients
+        global groups
+
         try:
             type_data = conn.recv(HEADER)
             
@@ -112,11 +119,15 @@ def manage_recv(conn=None, addr=None):
                 type_data = pickle.loads(type_data)
                 
                 #Recieve message
-                if type_data[0] == 'dm_message':
+                if type_data[0] == "dm_message":
                     sender = type_data[1]
                     reciever = type_data[2]
                     message = type_data[3]
                     handle_dms(sender, reciever, message)
+
+                #Create group
+                if type_data[0] == "create_group":
+                    groups.update({type_data[1]: type_data[2]})
 
                 ##Disconnect client
                 if type_data[0] == "disconnect_user":       
@@ -142,6 +153,7 @@ def handle_client():
     print(f"[LISTENING] Server is listening on {SERVER}")
     while True:
         global clients
+        global groups
 
         conn, addr = server.accept()
         

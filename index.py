@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8008
+        self.PORT = 8009
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -88,16 +88,20 @@ class App:
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
         #DM Button
-        self.button_seldms = Button(self.label_contacts, text='Messages', font=('Arial', 10), command=lambda m="": self.manage_send("req_online_users"))
+        self.button_seldms = Button(self.label_contacts, text='Messages', font=('Arial', 10), command=lambda m="": self.chat_type("req_online_users", "button_message"))
         self.button_seldms.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='white')
 
         #Groups Button
-        self.button_selgroups = Button(self.label_contacts, text='Groups', font=('Arial', 10))
+        self.button_selgroups = Button(self.label_contacts, text='Groups', font=('Arial', 10),  command=lambda m="": self.chat_type("button_groups"))
         self.button_selgroups.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='white')
 
         #Accept User Button
         self.button_user = Button(self.label_user, text='Aceptar', command=self.check_client, state='disabled')
         self.button_user.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
+
+        #Create new group Button
+        self.button_cregroup = Button(self.label_username, text='+', command=lambda m="": self.create_windowgr(phase="1"))
+        self.button_cregroup.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='white')
 
         """Others"""
         self.listbox_userson = Listbox(self.label_contacts)
@@ -111,7 +115,7 @@ class App:
         #ScrollBar
         self.scrollbar_chat = Scrollbar(self.label_chat, command=self.textbox_chat.yview)
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
-        self.scrollbar_chat.configure(background='#444444', activebackground='gray')
+        self.scrollbar_chat.configure(background='#444444', activebackground='gray', takefocus=0)
         
         #Functions
         self.responses_stop = threading.Event()  
@@ -171,7 +175,7 @@ class App:
                 if type_data != b'':  
                     type_data = pickle.loads(type_data)
 
-                    #Handle Other Messages
+                    #Handle DMs Recv
                     if type_data[0] == "dm_message":
                         sender = type_data[1]
                         message = type_data[2]
@@ -182,25 +186,32 @@ class App:
                         if sender == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
                             
-                    #Users online
+                    #Online Users Recv
                     if type_data[0] == "online_users":
+                        #Delete the list
                         self.listbox_userson.delete(0, END)
-                        
-                        #Validation "Messages" and "Groups"
+
+                        #Validation "dms" flag
                         if self.flags.get("dms") == True:
-                            for user in  type_data[1]:
+                            for user in type_data[1]:
                                 if user != self.username_client:
                                     self.listbox_userson.insert(0, user)
+                        
+                        #Validation "groups" flag
+                        if self.flags.get("groups") == True:
+                            for user in type_data[1]:
+                                if user != self.username_client:
+                                    self.list_addgr.insert(0, user)
         
 
-                    #Check invalid user
+                    #Check invalid user Recv
                     if type_data == "invalid_user":
                         label_message = Message(self.label_user, text="The user is already online")
                         label_message.place(relwidth = 0.70, relheight = 0.25, relx = 0.16, rely = 0.10)
                         self.flags.update({"user": False})
                         break
 
-                    #Check valid user
+                    #Check valid user Recv
                     if type_data == "valid_user":
                         self.chat_stage()
                         self.flags.update({"user": True})
@@ -211,20 +222,40 @@ class App:
                 break
 
     
-    #Function to manage a few sends
-    def manage_send(self, *args):
+    #Function to manage the type of the chat
+    def chat_type(self, *args):
         for value in args:
             
+            """DMs"""
             #Request Online Users
             if value == "req_online_users":
                 #Request the data
                 type_data = ["req_online_users", self.username_client]
                 type_data = pickle.dumps(type_data)
                 self.client.send(type_data)
-                
-                #Check "Messages" True
-                self.check_chatype[0] = True
 
+            #Button Messages
+            if value == "button_message":
+                #flag "dms" True
+                self.flags.update({"dms": True})
+                self.flags.update({"groups": False})
+
+                #Remove the button 
+                self.button_cregroup.place_forget()
+
+            """Groups"""
+            #Request Groups
+            if value == "button_groups":
+                #Delete the list
+                self.listbox_userson.delete(0, END)
+
+                #Flag "groups" True and "dms" False
+                self.flags.update({"groups": True})
+                self.flags.update({"dms": False})
+                
+                #Place the button
+                self.button_cregroup.place(relwidth=0.25, relheight=0.999, relx=0, rely=0)
+                
 
     #Function to send the message and username
     def send_dm(self):
@@ -251,7 +282,66 @@ class App:
         #Delete the entry
         self.entry_chat.delete(0, END)
     
-    
+
+    #Functiont to create a window for the group creation
+    def create_windowgr(self, phase, name=None):
+        #Create a toplevel window
+        self.wind_addgr = Toplevel()
+        self.wind_addgr.configure(bg='#1F1F1F')
+
+        #List label
+        self.label_addgr = Label(self.wind_addgr)
+        self.label_addgr.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
+        self.label_addgr.place(relwidth=0.999, relheight=0.999, relx=0, rely=0)
+
+        #Phase 1, select a name
+        if phase == "1":
+            #Window config
+            self.wind_addgr.geometry("400x200")
+            self.wind_addgr.title("Select a name for the group")
+
+            #Entry Add Group
+            self.entry_addgr = Entry(self.label_addgr, font=('Arial', 15))
+            self.entry_addgr.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
+            self.entry_addgr.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
+
+            #Button Add Group
+            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_windowgr(name=self.entry_addgr.get(), phase="2"), state='disabled')
+            self.button_addgr.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
+
+            #Bind the entry 
+            self.entry_addgr.bind("<KeyRelease>", lambda m="": self.validate_buttons("button_addgr"))
+            
+        #Phase 2, select users
+        elif phase == "2":
+            #Forget the Entry and Button
+            self.entry_addgr.place_forget()
+            self.button_addgr.place_forget()
+
+            #Window title
+            self.wind_addgr.geometry("260x400")
+            self.wind_addgr.title("Select the integrants")
+
+            #Listbox Add Group
+            self.list_addgr = Listbox(self.label_addgr, selectmode=MULTIPLE)
+            self.list_addgr.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
+            self.list_addgr.place(relwidth=0.999, relheight=0.90, relx=0, rely=0)
+
+            #Button Add Group
+            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_group(name, self.list_addgr.get(ANCHOR)), state='active')
+            self.button_addgr.place(relwidth = 0.25, relheight = 0.10, relx = 0.39, rely = 0.90)
+
+            #Call the function to print this list in the list users
+            self.chat_type("req_online_users")
+
+
+    #Function to create a group
+    def create_group(self, name, integrants):
+        group_name = name
+        print(integrants)
+        print(group_name)
+
+
     #Function to manage the chat data from json
     def chats_files(self, chat, message_str=None, type=None):
         messages = []
@@ -261,7 +351,7 @@ class App:
         #Try to open the file if exists
         try:
             #Extract the chat data
-            with open(f"chats/{chat}_chat.json") as file:
+            with open(f"chats/dms/{chat}_chat.json") as file:
                 chat_data = json.load(file)
 
             #Write method
@@ -269,7 +359,7 @@ class App:
                 messages = chat_data + message
                                     
                 #Save the messages in the chat data
-                with open(f"chats/{chat}_chat.json", "w") as file:
+                with open(f"chats/dms/{chat}_chat.json", "w") as file:
                     json.dump(messages, file)
 
             #Open method
@@ -281,7 +371,7 @@ class App:
 
             #Write method
             if type == "write":
-                with open(f"chats/{chat}_chat.json", "w") as file:
+                with open(f"chats/dms/{chat}_chat.json", "w") as file:
                     json.dump(message, file)
 
             #Open method
@@ -312,14 +402,17 @@ class App:
 
     #Function to disconnect from server
     def disconnect_client(self):   
+        #Validate if the user is connected
         if self.flags.get("connected") == False:
             self.wind.destroy()
 
+        #Validate if the user is connected and the user is invalid
         elif self.flags.get("connected") == True and self.flags.get("user") == False:
             self.client.send(pickle.dumps("disconnect_nouser"))
             self.client.close()
             self.wind.destroy()
 
+        #Validate if the user is connected and the user is valid
         elif self.flags.get("connected") == True and self.flags.get("user") == True:
             type_data = ["disconnect_user", self.username_client]
             type_data = pickle.dumps(type_data)
@@ -351,6 +444,7 @@ class App:
             self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
             self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
 
+            #Refresh chat
             self.refresh_chat()
 
 
@@ -373,20 +467,39 @@ class App:
                 while entry != '' and entry.isspace() == False:
                     self.button_chat.configure(state='normal')
                     break
+
                 else:
                     self.button_chat.configure(state='disabled')
 
-            #Bind the enter button
-            if value == "enter_key":
-                pass
+            #Entry addgr validation
+            if value == "button_addgr":
+                while entry != '' and entry.isspace() == False:
+                    self.send_dm()
+                    break
+                
+                else:
+                    self.button_chat.configure(state='disabled')
+
+
+            #Enter key validation
+            if value == "button_addgr":
+                entry_group = self.entry_addgr.get()
+                while entry_group != '' and entry_group.isspace() == False:
+                    self.button_addgr.configure(state='active')
+                    break
+                
+                else:
+                    self.button_chat.configure(state='disabled')
 
 
     #Function to mount the chat stage
     def chat_stage(self):
+        #Remove "Select username" stage
         self.entry_chat.place_forget()
         self.button_user.place_forget()
         self.label_user.place_forget()
 
+        #Change the geometry and title
         self.wind.geometry("900x700")
         self.wind.title("Chat")
 
@@ -403,8 +516,6 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
-
-
 
 
 if __name__ == '__main__':
