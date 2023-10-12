@@ -7,7 +7,7 @@ import socket
 import pickle
 import time
 class App:
-
+    
     def __init__(self, WindowT):
         #Window Attributes
         self.wind = WindowT
@@ -283,19 +283,19 @@ class App:
         self.entry_chat.delete(0, END)
     
 
-    #Functiont to create a window for the group creation
+    #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):
-        #Create a toplevel window
-        self.wind_addgr = Toplevel()
-        self.wind_addgr.configure(bg='#1F1F1F')
-
-        #List label
-        self.label_addgr = Label(self.wind_addgr)
-        self.label_addgr.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
-        self.label_addgr.place(relwidth=0.999, relheight=0.999, relx=0, rely=0)
-
         #Phase 1, select a name
         if phase == "1":
+            #Create a toplevel window
+            self.wind_addgr = Toplevel()
+            self.wind_addgr.configure(bg='#1F1F1F')
+
+            #List label
+            self.label_addgr = Label(self.wind_addgr)
+            self.label_addgr.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
+            self.label_addgr.place(relwidth=0.999, relheight=0.999, relx=0, rely=0)
+
             #Window config
             self.wind_addgr.geometry("400x200")
             self.wind_addgr.title("Select a name for the group")
@@ -318,7 +318,7 @@ class App:
             self.entry_addgr.place_forget()
             self.button_addgr.place_forget()
 
-            #Window title
+            #Window config
             self.wind_addgr.geometry("260x400")
             self.wind_addgr.title("Select the integrants")
 
@@ -328,7 +328,7 @@ class App:
             self.list_addgr.place(relwidth=0.999, relheight=0.90, relx=0, rely=0)
 
             #Button Add Group
-            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_group(name, self.list_addgr.get(ANCHOR)), state='active')
+            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_group(name, self.list_addgr), state='active')
             self.button_addgr.place(relwidth = 0.25, relheight = 0.10, relx = 0.39, rely = 0.90)
 
             #Call the function to print this list in the list users
@@ -336,10 +336,23 @@ class App:
 
 
     #Function to create a group
-    def create_group(self, name, integrants):
-        group_name = name
-        print(integrants)
+    def create_group(self, group_name, integrant):
+        #Hide the window
+        self.wind_addgr.withdraw()
+
+        #list of integrants
+        integrants = []
+
+        #Get the list of integrants
+        for i in integrant.curselection():
+            integrants.append(integrant.get(i))
+
+
         print(group_name)
+        print(integrants)
+
+        #Destroy the window
+        self.wind_addgr.destroy()
 
 
     #Function to manage the chat data from json
