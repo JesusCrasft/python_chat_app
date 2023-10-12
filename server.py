@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8009
+PORT = 8008
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -38,6 +38,25 @@ def handle_dms(sender, reciever, message):
     
     #Send the type and data
     reciever.send(type_data)
+
+
+#Function to create groups
+def create_gruop(name, integrants):
+    global clients
+    global groups
+
+    #Add the group to the groups list
+    groups.update({name: integrants})
+
+    #Encode the information with pickle
+    type_data = ["create_group", name, integrants]
+    type_data = pickle.dumps(type_data)
+
+    #Send the information to the integrants
+    for i in integrants:
+        print(i)
+        reciever = clients.get(i)
+        reciever.send(type_data)
 
 
 #Function to check if the username is available
@@ -92,7 +111,6 @@ def users_online(req=None, reciever=None):
             client.send(type_data)
 
 
-
 #Function to handle the disconnection from a client
 def handle_disc(conn, addr, username=None, useroff=None):
     global clients
@@ -127,7 +145,7 @@ def manage_recv(conn=None, addr=None):
 
                 #Create group
                 if type_data[0] == "create_group":
-                    groups.update({type_data[1]: type_data[2]})
+                    create_gruop(type_data[1], type_data[2])
 
                 ##Disconnect client
                 if type_data[0] == "disconnect_user":       

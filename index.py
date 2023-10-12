@@ -18,13 +18,14 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8009
+        self.PORT = 8008
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
         #Variables
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.username_client = ''
+        self.groups = {}
         self.flags = {
             #Connected to server
             "connected": False,
@@ -198,11 +199,16 @@ class App:
                                     self.listbox_userson.insert(0, user)
                         
                         #Validation "groups" flag
-                        if self.flags.get("groups") == True:
+                        if self.flags.get("groups") == "Insert":
                             for user in type_data[1]:
                                 if user != self.username_client:
                                     self.list_addgr.insert(0, user)
-        
+                                    self.flags.update({"groups": True})
+
+                    #Create Group
+                    if type_data[0] == "create_group":
+                        self.groups.update({type_data[1]: type_data[2]})
+                        
 
                     #Check invalid user Recv
                     if type_data == "invalid_user":
@@ -224,6 +230,10 @@ class App:
     
     #Function to manage the type of the chat
     def chat_type(self, *args):
+        #Forget the textbox
+        self.textbox_chat.place_forget()
+
+        #Chat Type manage
         for value in args:
             
             """DMs"""
@@ -248,6 +258,11 @@ class App:
             if value == "button_groups":
                 #Delete the list
                 self.listbox_userson.delete(0, END)
+
+                #Update the list with the groups
+                for group in list(self.groups.keys()):
+                    self.listbox_userson.insert(0, group)
+                        
 
                 #Flag "groups" True and "dms" False
                 self.flags.update({"groups": True})
@@ -282,6 +297,11 @@ class App:
         #Delete the entry
         self.entry_chat.delete(0, END)
     
+
+    #Function to send messages to groups
+    def send_megroup(self):
+        pass
+
 
     #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):
@@ -332,6 +352,7 @@ class App:
             self.button_addgr.place(relwidth = 0.25, relheight = 0.10, relx = 0.39, rely = 0.90)
 
             #Call the function to print this list in the list users
+            self.flags.update({"groups": "Insert"})
             self.chat_type("req_online_users")
 
 
@@ -347,9 +368,16 @@ class App:
         for i in integrant.curselection():
             integrants.append(integrant.get(i))
 
+        #Encode the data
+        type_data = ["create_group", group_name, integrants]
+        type_data = pickle.dumps(type_data)
 
-        print(group_name)
-        print(integrants)
+        #Add the group to the dictionary groups and update the listbox
+        self.groups.update({group_name: integrants})
+        self.chat_type("button_groups")
+
+        #Send the information
+        self.client.send(type_data)
 
         #Destroy the window
         self.wind_addgr.destroy()
@@ -360,7 +388,7 @@ class App:
         messages = []
         message = []
         message.append(message_str)
-        
+            
         #Try to open the file if exists
         try:
             #Extract the chat data
@@ -370,7 +398,7 @@ class App:
             #Write method
             if type == "write":
                 messages = chat_data + message
-                                    
+                                        
                 #Save the messages in the chat data
                 with open(f"chats/dms/{chat}_chat.json", "w") as file:
                     json.dump(messages, file)
@@ -387,9 +415,9 @@ class App:
                 with open(f"chats/dms/{chat}_chat.json", "w") as file:
                     json.dump(message, file)
 
-            #Open method
-            if type == "open":
-                return None
+                #Open method
+                if type == "open":
+                    return None
 
 
     #Function to refresh a chat
@@ -398,15 +426,15 @@ class App:
         self.textbox_chat.configure(state='normal')
 
         #Get the chat user and the messages from the chat file
-        chat_user = self.listbox_userson.get(ANCHOR)
-        chat_data = self.chats_files(chat_user, type="open")
-        
+        name = self.listbox_userson.get(ANCHOR)
+        data = self.chats_files(name, type="open")
+            
         #Delete the textbox
         self.textbox_chat.delete("1.0", END)
 
         #Validate if the chat file has messages
-        if chat_data != None:
-            for message in chat_data:
+        if data != None:
+            for message in data:
                 self.textbox_chat.insert(END, f"{message} \n")
 
         #Change the textbox state
@@ -449,17 +477,17 @@ class App:
 
             #Chat
             self.textbox_chat.place(relwidth = 0.95, relheight = 0.999, relx = 0.0, rely = 0.0)
-            
+                
             self.scrollbar_chat.place(relwidth = 0.05, relheight = 0.999, relx = 0.95, rely = 0)
-        
+            
             #Entry and Buttons
             self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
             self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
             self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
-
+ 
             #Refresh chat
             self.refresh_chat()
-
+                 
 
     #Function to validate buttons
     def validate_buttons(self, *args):
