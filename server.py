@@ -15,11 +15,24 @@ groups = {}
 
 
 #Function to handle messages to a group
-def handle_megroup():
+def handle_megroup(sender, group_name, message):
     global clients
+    global groups
+    
+    #Get the integrants
+    integrants = groups.get(group_name)
 
-    pass
+    #Message
+    message = f"{sender}: {message}"
 
+    #Encode the data
+    type_data = ["group_message", group_name, message]
+    type_data = pickle.dumps(type_data)
+
+    #Send the information to the integrants
+    for i in integrants:
+        reciever = clients.get(i)
+        reciever.send(type_data)
 
 #Function to handle the direct msg
 def handle_dms(sender, reciever, message):
@@ -54,7 +67,6 @@ def create_gruop(name, integrants):
 
     #Send the information to the integrants
     for i in integrants:
-        print(i)
         reciever = clients.get(i)
         reciever.send(type_data)
 
@@ -142,6 +154,13 @@ def manage_recv(conn=None, addr=None):
                     reciever = type_data[2]
                     message = type_data[3]
                     handle_dms(sender, reciever, message)
+
+                #Recieve group message
+                if type_data[0] == "group_message":
+                    sender = type_data[1]
+                    group_name = type_data[2]
+                    message = type_data[3]
+                    handle_megroup(sender, group_name, message)
 
                 #Create group
                 if type_data[0] == "create_group":

@@ -81,7 +81,7 @@ class App:
 
         """Buttons"""
         #Chat Button
-        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_dm, state='disabled')
+        self.button_chat = Button(self.label_wchat, text='Enviar', command=self.send_messages, state='disabled')
         #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         
         #Image Button
@@ -182,11 +182,22 @@ class App:
                         message = type_data[2]
                         
                         #Manage the chat file
-                        self.chats_files(sender, message, type="write")
+                        self.chats_files(sender, message, method="write", flag="dms")
 
                         if sender == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
-                            
+                    
+                    #Handle Messages to Groups
+                    if type_data[0] == "group_message":
+                        group_name = type_data[1]
+                        message = type_data[2]
+                        print(message)
+                        #Manage the chat file
+                        self.chats_files(group_name, message, method="write", flag="groups")
+
+                        if group_name == self.listbox_userson.get(ANCHOR):
+                            self.refresh_chat()
+
                     #Online Users Recv
                     if type_data[0] == "online_users":
                         #Delete the list
@@ -273,13 +284,19 @@ class App:
                 
 
     #Function to send the message and username
-    def send_dm(self):
+    def send_messages(self):
         #Get the username and message
         message = self.entry_chat.get()
         receiver = self.listbox_userson.get(ANCHOR)
+        
+        #Validate the type of chat
+        if self.flags.get("dms") == True:
+            flag = "dm_message"
+        else:
+            flag = "group_message"
 
         #Use pickle to encode the data
-        data_list = ["dm_message", self.username_client, receiver, message]
+        data_list = [flag, self.username_client, receiver, message]
         data_list = pickle.dumps(data_list)
 
         #Sending the message and the length
@@ -289,18 +306,13 @@ class App:
         message = f"{self.username_client}: {message}"
 
         #Manage the chat file
-        self.chats_files(receiver, message, type="write")
+        self.chats_files(receiver, message, method="write")
         
         #Refresh the chat
         self.refresh_chat()
 
         #Delete the entry
         self.entry_chat.delete(0, END)
-    
-
-    #Function to send messages to groups
-    def send_megroup(self):
-        pass
 
 
     #Function to create a window for the group creation
@@ -384,40 +396,53 @@ class App:
 
 
     #Function to manage the chat data from json
-    def chats_files(self, chat, message_str=None, type=None):
+    def chats_files(self, chat, message_str=None, method=None, flag=None):
         messages = []
         message = []
         message.append(message_str)
-            
+
+        #Validate the type of chat with the messages 
+        if self.flags.get("dms") == True and flag == "groups":
+            flag = "groups"
+
+        elif self.flags.get("groups") == True and flag == "dms":
+            flag = "dms"
+        
+        #Validate the type of chat without the messages
+        if self.flags.get("dms") == True and flag == None:
+            flag = "dms"
+        
+        elif self.flags.get("groups") == True and flag == None:
+            flag = "groups"
+
         #Try to open the file if exists
         try:
             #Extract the chat data
-            with open(f"chats/dms/{chat}_chat.json") as file:
+            with open(f"chats/{flag}/{chat}_chat.json") as file:
                 chat_data = json.load(file)
 
             #Write method
-            if type == "write":
+            if method == "write":
                 messages = chat_data + message
                                         
                 #Save the messages in the chat data
-                with open(f"chats/dms/{chat}_chat.json", "w") as file:
+                with open(f"chats/{flag}/{chat}_chat.json", "w") as file:
                     json.dump(messages, file)
 
             #Open method
-            if type == "open":
+            if method == "open":
                 return chat_data
 
         #Create the chat if not exists
         except Exception as ex:
-
             #Write method
-            if type == "write":
-                with open(f"chats/dms/{chat}_chat.json", "w") as file:
+            if method == "write":
+                with open(f"chats/{flag}/{chat}_chat.json", "w") as file:
                     json.dump(message, file)
 
-                #Open method
-                if type == "open":
-                    return None
+            #Open method
+            if method == "open":
+                return None
 
 
     #Function to refresh a chat
@@ -427,7 +452,7 @@ class App:
 
         #Get the chat user and the messages from the chat file
         name = self.listbox_userson.get(ANCHOR)
-        data = self.chats_files(name, type="open")
+        data = self.chats_files(name, method="open")
             
         #Delete the textbox
         self.textbox_chat.delete("1.0", END)
@@ -515,7 +540,7 @@ class App:
             #Entry addgr validation
             if value == "button_addgr":
                 while entry != '' and entry.isspace() == False:
-                    self.send_dm()
+                    self.send_messages()
                     break
                 
                 else:
