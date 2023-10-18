@@ -320,25 +320,24 @@ class App:
     def manage_files(self, req, method=None, directory=None, new_data=None, flag=None):
         #Validate if the user is requesting the list groups or messages
         if req != True:
-            #Validate which directory is going to be use
-            if flag != None:
-                #If user is in chat dms type and a new group message arrive then save the message in groups
-                if self.flags.get("dms") == True:
+           #Validate if the user is in dms chat
+            if self.flags.get("dms") == True:
+                flag = f"chats/dms/{directory}_chat.json"
+                #Validate if a new groups message arrive while in dms chat
+                if flag ==  "groups":
                     flag = f"chats/groups/{directory}_chat.json"
-                else:
+
+            #Validate if the user is in dms chat
+            elif self.flags.get("groups") == True:
+                flag = f"chats/groups/{directory}_chat.json"
+                #Validate if a new dms message arrive while in groups chat
+                if flag ==  "dms":
                     flag = f"chats/dms/{directory}_chat.json"
 
-            #Validate the type of chat with flag inactive
-            else:
-                #If the user is in the chat dms type and no new messages arrive the save the message in dms
-                if self.flags.get("dms") == True:
-                    flag = f"chats/dms/{directory}_chat.json"
-                else:
-                    flag = f"chats/groups/{directory}_chat.json"
+        #Requesting the list groups
         else:
             flag = "chats/list_groups.json"
-
-        
+            
         #Try to open the file if exists
         try:
             #Get the file data
@@ -363,17 +362,20 @@ class App:
             if method == "open":
                 return file_data
 
-        #Create the chat if not exists
+        #Manage the function if the file doesnt exists
         except Exception as ex:
             #Write method
             if method == "write":
+                #Save the data into the file
                 with open(flag, "w") as file:
                     json.dump(new_data, file)
 
             #Open method
             if method == "open":
+                #Validate if the user is requesting the list groups
                 if req != True:
                     return None
+            
                 else:
                     return {}
 
