@@ -116,7 +116,7 @@ class App:
         #ScrollBar
         self.scrollbar_chat = Scrollbar(self.label_chat, command=self.textbox_chat.yview)
         self.textbox_chat.configure(yscrollcommand=self.scrollbar_chat.set)
-        self.scrollbar_chat.configure(background='#444444', activebackground='gray', takefocus=0)
+        self.scrollbar_chat.configure(background='#444444', activebackground='gray')
         
         #Functions
         self.responses_stop = threading.Event()  
@@ -182,7 +182,7 @@ class App:
                         message = type_data[2]
                         
                         #Manage the chat file
-                        self.chats_files(sender, message, method="write", flag="dms")
+                        self.manage_files(req=False, method="write", directory=sender, flag="dms", new_data=message)
 
                         if sender == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -193,7 +193,7 @@ class App:
                         message = type_data[2]
                         print(message)
                         #Manage the chat file
-                        self.chats_files(group_name, message, method="write", flag="groups")
+                        self.manage_files(req=False, method="write", directory=group_name, flag="groups", new_data=message)
 
                         if group_name == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -218,8 +218,7 @@ class App:
 
                     #Create Group
                     if type_data[0] == "create_group":
-                        self.groups.update({type_data[1]: type_data[2]})
-                        
+                        self.manage_files(req=True, method="write", new_data={type_data[1]: type_data[2]})
 
                     #Check invalid user Recv
                     if type_data == "invalid_user":
@@ -269,16 +268,18 @@ class App:
             if value == "button_groups":
                 #Delete the list
                 self.listbox_userson.delete(0, END)
-
+                
+                #List of groups req
+                self.groups = self.manage_files(req=True, method="open")
+            
                 #Update the list with the groups
                 for group in list(self.groups.keys()):
                     self.listbox_userson.insert(0, group)
-                        
-
+                    
                 #Flag "groups" True and "dms" False
                 self.flags.update({"groups": True})
                 self.flags.update({"dms": False})
-                
+
                 #Place the button
                 self.button_cregroup.place(relwidth=0.25, relheight=0.999, relx=0, rely=0)
                 
@@ -306,7 +307,7 @@ class App:
         message = f"{self.username_client}: {message}"
 
         #Manage the chat file
-        self.chats_files(receiver, message, method="write")
+        self.manage_files(req=False, method="write", directory=receiver, new_data=message)
         
         #Refresh the chat
         self.refresh_chat()
@@ -315,134 +316,66 @@ class App:
         self.entry_chat.delete(0, END)
 
 
-    #Function to create a window for the group creation
-    def create_windowgr(self, phase, name=None):
-        #Phase 1, select a name
-        if phase == "1":
-            #Create a toplevel window
-            self.wind_addgr = Toplevel()
-            self.wind_addgr.configure(bg='#1F1F1F')
-
-            #List label
-            self.label_addgr = Label(self.wind_addgr)
-            self.label_addgr.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
-            self.label_addgr.place(relwidth=0.999, relheight=0.999, relx=0, rely=0)
-
-            #Window config
-            self.wind_addgr.geometry("400x200")
-            self.wind_addgr.title("Select a name for the group")
-
-            #Entry Add Group
-            self.entry_addgr = Entry(self.label_addgr, font=('Arial', 15))
-            self.entry_addgr.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
-            self.entry_addgr.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
-
-            #Button Add Group
-            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_windowgr(name=self.entry_addgr.get(), phase="2"), state='disabled')
-            self.button_addgr.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
-
-            #Bind the entry 
-            self.entry_addgr.bind("<KeyRelease>", lambda m="": self.validate_buttons("button_addgr"))
-            
-        #Phase 2, select users
-        elif phase == "2":
-            #Forget the Entry and Button
-            self.entry_addgr.place_forget()
-            self.button_addgr.place_forget()
-
-            #Window config
-            self.wind_addgr.geometry("260x400")
-            self.wind_addgr.title("Select the integrants")
-
-            #Listbox Add Group
-            self.list_addgr = Listbox(self.label_addgr, selectmode=MULTIPLE)
-            self.list_addgr.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
-            self.list_addgr.place(relwidth=0.999, relheight=0.90, relx=0, rely=0)
-
-            #Button Add Group
-            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_group(name, self.list_addgr), state='active')
-            self.button_addgr.place(relwidth = 0.25, relheight = 0.10, relx = 0.39, rely = 0.90)
-
-            #Call the function to print this list in the list users
-            self.flags.update({"groups": "Insert"})
-            self.chat_type("req_online_users")
-
-
-    #Function to create a group
-    def create_group(self, group_name, integrant):
-        #Hide the window
-        self.wind_addgr.withdraw()
-
-        #list of integrants
-        integrants = []
-
-        #Get the list of integrants
-        for i in integrant.curselection():
-            integrants.append(integrant.get(i))
-
-        #Encode the data
-        type_data = ["create_group", group_name, integrants]
-        type_data = pickle.dumps(type_data)
-
-        #Add the group to the dictionary groups and update the listbox
-        self.groups.update({group_name: integrants})
-        self.chat_type("button_groups")
-
-        #Send the information
-        self.client.send(type_data)
-
-        #Destroy the window
-        self.wind_addgr.destroy()
-
-
     #Function to manage the chat data from json
-    def chats_files(self, chat, message_str=None, method=None, flag=None):
-        messages = []
-        message = []
-        message.append(message_str)
+    def manage_files(self, req, method=None, directory=None, new_data=None, flag=None):
+        #Validate if the user is requesting the list groups or messages
+        if req != True:
+            #Validate which directory is going to be use
+            if flag != None:
+                #If user is in chat dms type and a new group message arrive then save the message in groups
+                if self.flags.get("dms") == True:
+                    flag = f"chats/groups/{directory}_chat.json"
+                else:
+                    flag = f"chats/dms/{directory}_chat.json"
 
-        #Validate the type of chat with the messages 
-        if self.flags.get("dms") == True and flag == "groups":
-            flag = "groups"
+            #Validate the type of chat with flag inactive
+            else:
+                #If the user is in the chat dms type and no new messages arrive the save the message in dms
+                if self.flags.get("dms") == True:
+                    flag = f"chats/dms/{directory}_chat.json"
+                else:
+                    flag = f"chats/groups/{directory}_chat.json"
+        else:
+            flag = "chats/list_groups.json"
 
-        elif self.flags.get("groups") == True and flag == "dms":
-            flag = "dms"
         
-        #Validate the type of chat without the messages
-        if self.flags.get("dms") == True and flag == None:
-            flag = "dms"
-        
-        elif self.flags.get("groups") == True and flag == None:
-            flag = "groups"
-
         #Try to open the file if exists
         try:
-            #Extract the chat data
-            with open(f"chats/{flag}/{chat}_chat.json") as file:
-                chat_data = json.load(file)
+            #Get the file data
+            with open(flag, "w") as file:
+                file_data = json.load(file)
 
             #Write method
             if method == "write":
-                messages = chat_data + message
-                                        
-                #Save the messages in the chat data
-                with open(f"chats/{flag}/{chat}_chat.json", "w") as file:
-                    json.dump(messages, file)
+                
+                if req != True:
+                    #Messages method, add the new list to the old list of messages
+                    file_data = file_data + new_data
+                else:
+                    #Group list method, update the file data with the new group dictionary
+                    file_data.update(new_data)
 
+                #Save the new data into the file
+                with open(flag, "w") as file:
+                    json.dump(file_data, file)
+                        
             #Open method
             if method == "open":
-                return chat_data
+                return file_data
 
         #Create the chat if not exists
         except Exception as ex:
             #Write method
             if method == "write":
-                with open(f"chats/{flag}/{chat}_chat.json", "w") as file:
-                    json.dump(message, file)
+                with open(flag, "w") as file:
+                    json.dump(new_data, file)
 
             #Open method
             if method == "open":
-                return None
+                if req != True:
+                    return None
+                else:
+                    return {}
 
 
     #Function to refresh a chat
@@ -452,7 +385,7 @@ class App:
 
         #Get the chat user and the messages from the chat file
         name = self.listbox_userson.get(ANCHOR)
-        data = self.chats_files(name, method="open")
+        data = self.manage_files(req=False, method="open", directory=name)
             
         #Delete the textbox
         self.textbox_chat.delete("1.0", END)
@@ -465,6 +398,12 @@ class App:
         #Change the textbox state
         self.textbox_chat.configure(state='disabled')
 
+
+    #Function to manage the closing window
+    def closing_window(self):
+        self.responses_stop.set()
+        self.disconnect_client()
+        
 
     #Function to disconnect from server
     def disconnect_client(self):   
@@ -486,12 +425,6 @@ class App:
             self.client.close()
             self.wind.destroy()
 
-
-    #Function to manage the closing window
-    def closing_window(self):
-        self.responses_stop.set()
-        self.disconnect_client()
-        
 
     #Function to select a chat
     def select_chat(self, key):
@@ -582,6 +515,87 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
+
+
+    #Function to create a window for the group creation
+    def create_windowgr(self, phase, name=None):
+        #Phase 1, select a name
+        if phase == "1":
+            #Create a toplevel window
+            self.wind_addgr = Toplevel()
+            self.wind_addgr.configure(bg='#1F1F1F')
+
+            #List label
+            self.label_addgr = Label(self.wind_addgr)
+            self.label_addgr.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
+            self.label_addgr.place(relwidth=0.999, relheight=0.999, relx=0, rely=0)
+
+            #Window config
+            self.wind_addgr.geometry("400x200")
+            self.wind_addgr.title("Select a name for the group")
+
+            #Entry Add Group
+            self.entry_addgr = Entry(self.label_addgr, font=('Arial', 15))
+            self.entry_addgr.configure(exportselection=False, bg='#323232', fg='white', highlightbackground='gray')
+            self.entry_addgr.place(relwidth = 0.70, relheight = 0.18, relx = 0.16, rely = 0.25)
+
+            #Button Add Group
+            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_windowgr(name=self.entry_addgr.get(), phase="2"), state='disabled')
+            self.button_addgr.place(relwidth = 0.25, relheight = 0.18, relx = 0.39, rely = 0.55)
+
+            #Bind the entry 
+            self.entry_addgr.bind("<KeyRelease>", lambda m="": self.validate_buttons("button_addgr"))
+            
+        #Phase 2, select users
+        elif phase == "2":
+            #Forget the Entry and Button
+            self.entry_addgr.place_forget()
+            self.button_addgr.place_forget()
+
+            #Window config
+            self.wind_addgr.geometry("260x400")
+            self.wind_addgr.title("Select the integrants")
+
+            #Listbox Add Group
+            self.list_addgr = Listbox(self.label_addgr, selectmode=MULTIPLE)
+            self.list_addgr.configure(bg='#1F1F1F', font=('Arial', 17), fg='white', highlightbackground='gray', borderwidth=1)
+            self.list_addgr.place(relwidth=0.999, relheight=0.90, relx=0, rely=0)
+
+            #Button Add Group
+            self.button_addgr = Button(self.label_addgr, text='Aceptar', command=lambda m="": self.create_group(name, self.list_addgr), state='active')
+            self.button_addgr.place(relwidth = 0.25, relheight = 0.10, relx = 0.39, rely = 0.90)
+
+            #Call the function to print this list in the list users
+            self.flags.update({"groups": "Insert"})
+            self.chat_type("req_online_users")
+
+
+    #Function to create a group
+    def create_group(self, group_name, integrant):
+        #Hide the window
+        self.wind_addgr.withdraw()
+
+        #list of integrants
+        integrants = []
+
+        #Get the list of integrants
+        for i in integrant.curselection():
+            integrants.append(integrant.get(i))
+
+        #Encode the data
+        type_data = ["create_group", group_name, integrants]
+        type_data = pickle.dumps(type_data)
+
+        #Add the group to the list of groups and update the listbox
+        self.manage_files(req=True, method="write", new_data={group_name: integrants})
+        self.chat_type("button_groups")
+
+        #Send the information
+        self.client.send(type_data)
+
+        #Destroy the window
+        self.wind_addgr.destroy()
+
 
 
 if __name__ == '__main__':
