@@ -31,8 +31,9 @@ def handle_megroup(sender, group_name, message):
 
     #Send the information to the integrants
     for i in integrants:
-        reciever = clients.get(i)
-        reciever.send(type_data)
+        if i != sender:
+            reciever = clients.get(i)
+            reciever.send(type_data)
 
 #Function to handle the direct msg
 def handle_dms(sender, reciever, message):

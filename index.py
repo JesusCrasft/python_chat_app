@@ -182,7 +182,7 @@ class App:
                         message = type_data[2]
                         
                         #Manage the chat file
-                        self.manage_files(req=False, method="write", directory=sender, flag="dms", new_data=message)
+                        self.manage_files(req=False, method="write", directory=sender, flag="dms", new_data=[message])
 
                         if sender == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -191,9 +191,8 @@ class App:
                     if type_data[0] == "group_message":
                         group_name = type_data[1]
                         message = type_data[2]
-                        print(message)
                         #Manage the chat file
-                        self.manage_files(req=False, method="write", directory=group_name, flag="groups", new_data=message)
+                        self.manage_files(req=False, method="write", directory=group_name, flag="groups", new_data=[message])
 
                         if group_name == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -307,13 +306,14 @@ class App:
         message = f"{self.username_client}: {message}"
 
         #Manage the chat file
-        self.manage_files(req=False, method="write", directory=receiver, new_data=message)
+        self.manage_files(req=False, method="write", directory=receiver, new_data=[message])
         
         #Refresh the chat
         self.refresh_chat()
 
         #Delete the entry
         self.entry_chat.delete(0, END)
+        self.button_chat.configure(state="disabled")
 
 
     #Function to manage the chat data from json
@@ -341,12 +341,12 @@ class App:
         #Try to open the file if exists
         try:
             #Get the file data
-            with open(flag, "w") as file:
+            with open(flag, "r") as file:
                 file_data = json.load(file)
 
             #Write method
             if method == "write":
-                
+                #Validate if the user is requesting the list groups
                 if req != True:
                     #Messages method, add the new list to the old list of messages
                     file_data = file_data + new_data
@@ -364,6 +364,7 @@ class App:
 
         #Manage the function if the file doesnt exists
         except Exception as ex:
+            print(ex, "manage_files")
             #Write method
             if method == "write":
                 #Save the data into the file
@@ -583,6 +584,9 @@ class App:
         #Get the list of integrants
         for i in integrant.curselection():
             integrants.append(integrant.get(i))
+
+        #Add yourself to the integrants
+        integrants.append(self.username_client)
 
         #Encode the data
         type_data = ["create_group", group_name, integrants]
