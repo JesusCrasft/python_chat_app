@@ -1,11 +1,11 @@
-from tkinter import ttk
-from tkinter import * 
+from tkinter import *
+from tkinter import filedialog
 
 import json 
 import threading
 import socket
 import pickle
-import time
+
 class App:
     
     def __init__(self, WindowT):
@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8008
+        self.PORT = 8007
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -85,7 +85,7 @@ class App:
         #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         
         #Image Button
-        self.button_sendimg = Button(self.label_wchat, text='Imagen')
+        self.button_sendimg = Button(self.label_wchat, text='Imagen', command=self.send_images)
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
         #DM Button
@@ -147,7 +147,7 @@ class App:
 
         except socket.error:
             pass
-
+    
         #Get the username
         self.username_client = self.entry_user.get()
 
@@ -160,6 +160,7 @@ class App:
         #Active responses thread
         self.responses_thread = threading.Thread(target=self.manage_recv)
         self.responses_thread.start()
+
 
 
     #Function to manage all the recvs
@@ -281,7 +282,25 @@ class App:
 
                 #Place the button
                 self.button_cregroup.place(relwidth=0.25, relheight=0.999, relx=0, rely=0)
-                
+
+
+    #Function to send images
+    def send_images(self):
+        directory = filedialog.askopenfilename()
+        print(directory)
+        file = open(directory, 'rb')
+        file_data = file.read(4080)
+
+        type_data = ["image"]
+        type_data = pickle.dumps(type_data)
+        self.client.send(type_data)
+
+        while file_data:
+            self.client.send(file_data)
+            file_data = file.read(4080)
+        
+        file.close()  
+        
 
     #Function to send the message and username
     def send_messages(self):
@@ -518,7 +537,7 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
-
+        
 
     #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):

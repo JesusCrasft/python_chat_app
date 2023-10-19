@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8008
+PORT = 8007
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -52,6 +52,19 @@ def handle_dms(sender, reciever, message):
     
     #Send the type and data
     reciever.send(type_data)
+
+
+#Function to handle images
+def image(conn):
+    file = open('server_image.png', 'wb')
+    image_chunck = conn.recv(4080)
+
+    while image_chunck:
+        file.write(image_chunck)
+        image_chunck = conn.recv(4080)
+    
+    file.close()
+    
 
 
 #Function to create groups
@@ -162,6 +175,10 @@ def manage_recv(conn=None, addr=None):
                     group_name = type_data[2]
                     message = type_data[3]
                     handle_megroup(sender, group_name, message)
+
+                #Recieve image
+                if type_data[0] == "image":
+                    image(conn)
 
                 #Create group
                 if type_data[0] == "create_group":
