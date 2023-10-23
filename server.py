@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8007
+PORT = 8005
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -35,6 +35,7 @@ def handle_megroup(sender, group_name, message):
             reciever = clients.get(i)
             reciever.send(type_data)
 
+
 #Function to handle the direct msg
 def handle_dms(sender, reciever, message):
     global clients
@@ -54,17 +55,41 @@ def handle_dms(sender, reciever, message):
     reciever.send(type_data)
 
 
-#Function to handle images
-def image(conn):
-    file = open('server_image.png', 'wb')
-    image_chunck = conn.recv(4080)
+#Function to handle send files
+def handle_images(conn, sender, receiver):
+    global clients
+    global groups
 
-    while image_chunck:
-        file.write(image_chunck)
-        image_chunck = conn.recv(4080)
+    #Get the connection from the sender of the image
+    receiver = clients.get(receiver)
+
+    #Create an image with the data recv from the sender
+    file = open('server_image.jpg', 'wb')
+    file_data = conn.recv(4080)
+    
+    while file_data:
+        file.write(file_data)
+        file_data = conn.recv(4080)
     
     file.close()
+
+    #Encode the data with pickle to send
+    type_data = ["send_image", sender]
+    type_data = pickle.dumps(type_data)
     
+    #Send the type and data
+    receiver.send(type_data)
+
+    #Send the image data to the receiver
+    #Open the file and read 
+    file = open("server_image.png.jpg", 'rb')
+    file_data = file.read(4080)
+
+    while file_data:
+        receiver.send(file_data)
+        file_data = file.read(4080)
+
+    file.close()
 
 
 #Function to create groups
@@ -177,8 +202,8 @@ def manage_recv(conn=None, addr=None):
                     handle_megroup(sender, group_name, message)
 
                 #Recieve image
-                if type_data[0] == "image":
-                    image(conn)
+                if type_data[0] == "send_image":
+                    handle_images(conn, type_data[1], type_data[2])
 
                 #Create group
                 if type_data[0] == "create_group":

@@ -18,7 +18,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8007
+        self.PORT = 8005
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -85,7 +85,7 @@ class App:
         #self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
         
         #Image Button
-        self.button_sendimg = Button(self.label_wchat, text='Imagen', command=self.send_images)
+        self.button_sendimg = Button(self.label_wchat, text='Imagen', command=lambda m="": self.handle_images(method="send_image"))
         #self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
         
         #DM Button
@@ -162,7 +162,6 @@ class App:
         self.responses_thread.start()
 
 
-
     #Function to manage all the recvs
     def manage_recv(self):  
         while True:
@@ -197,6 +196,11 @@ class App:
 
                         if group_name == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
+
+                    #Handle send images
+                    if type_data[0] == "send_image":
+                        print("image")
+                        self.handle_images(type_data[1], method="recv_image")
 
                     #Online Users Recv
                     if type_data[0] == "online_users":
@@ -285,21 +289,38 @@ class App:
 
 
     #Function to send images
-    def send_images(self):
-        directory = filedialog.askopenfilename()
-        print(directory)
-        file = open(directory, 'rb')
-        file_data = file.read(4080)
+    def handle_images(self, method=None, sender=None):
 
-        type_data = ["image"]
-        type_data = pickle.dumps(type_data)
-        self.client.send(type_data)
-
-        while file_data:
-            self.client.send(file_data)
+        if method == "send_image":
+            #Ask the user which file want to send
+            #directory = filedialog.askopenfilename()
+    
+            #Open the file and read 
+            file = open("test.jpg", 'rb')
             file_data = file.read(4080)
+
+            receiver = self.listbox_userson.get(ANCHOR)
+            type_data = ["send_image", self.username_client, receiver]
+            type_data = pickle.dumps(type_data)
+            self.client.send(type_data)
+
+            #Send the type of recv, sender and reciever
+            while file_data:
+                self.client.send(file_data)
+                file_data = file.read(4080)
+            
+            file.close() 
         
-        file.close()  
+        if method == "recv_image":
+            #Create an image with the data recv from the sender
+            file = open(f'images/{sender}_image.jpg', 'wb')
+            file_data = self.client.recv(4080)
+
+            while file_data:
+                file.write(file_data)
+                file_data = self.client.recv(4080)
+            
+            file.close()
         
 
     #Function to send the message and username
@@ -537,7 +558,7 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
-        
+        self.handle_images(method="send_image")
 
     #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):
