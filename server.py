@@ -63,16 +63,6 @@ def handle_images(conn, sender, receiver):
     #Get the connection from the sender of the image
     receiver = clients.get(receiver)
 
-    #Create an image with the data recv from the sender
-    file = open('server_image.jpg', 'wb')
-    file_data = conn.recv(4080)
-    
-    while file_data:
-        file.write(file_data)
-        file_data = conn.recv(4080)
-    
-    file.close()
-
     #Encode the data with pickle to send
     type_data = ["send_image", sender]
     type_data = pickle.dumps(type_data)
@@ -80,18 +70,18 @@ def handle_images(conn, sender, receiver):
     #Send the type and data
     receiver.send(type_data)
 
-    #Send the image data to the receiver
-    #Open the file and read 
-    file = open("server_image.png.jpg", 'rb')
-    file_data = file.read(4080)
+    #Create an image with the data recv from the sender
+    file_data = conn.recv(2048)
 
     while file_data:
         receiver.send(file_data)
-        file_data = file.read(4080)
+        file_data = conn.recv(2048)
+        if len(file_data) < 2048:
+            receiver.send(file_data)
+            break
 
-    file.close()
-
-
+    print("finish")
+    
 #Function to create groups
 def create_gruop(name, integrants):
     global clients
@@ -181,7 +171,7 @@ def manage_recv(conn=None, addr=None):
         global groups
 
         try:
-            type_data = conn.recv(HEADER)
+            type_data = conn.recv(4096)
             
             #Type connection
             if type_data != b'':
