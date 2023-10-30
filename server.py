@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8005
+PORT = 8004
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -56,32 +56,46 @@ def handle_dms(sender, reciever, message):
 
 
 #Function to handle send files
-def handle_images(conn, sender, receiver):
+def handle_images(conn=None, sender=None, receiver=None, size=None):
     global clients
     global groups
 
     #Get the connection from the sender of the image
-    receiver = clients.get(receiver)
+    #receiver = clients.get(receiver)
 
     #Encode the data with pickle to send
-    type_data = ["send_image", sender]
-    type_data = pickle.dumps(type_data)
+    #type_data = ["send_image", sender]
+    #type_data = pickle.dumps(type_data)
     
     #Send the type and data
-    receiver.send(type_data)
+    #receiver.send(type_data)
 
     #Create an image with the data recv from the sender
-    file_data = conn.recv(2048)
+    #file = open("sever_image.jpg", 'wb')
+    file_recv = conn.recv(9216)
+    file_data = file_recv
 
-    while file_data:
-        receiver.send(file_data)
-        file_data = conn.recv(2048)
-        if len(file_data) < 2048:
-            receiver.send(file_data)
+    while file_recv:
+        file_data = file_data + file_recv
+        file_recv = conn.recv(9216)
+        if len(file_recv) < 9216:
+            file_data = file_data + file_recv
             break
+    
+    print(file_data)
+    #file.close()
+    
+
+    """while file_data:
+        receiver.send(file_data)
+        file_data = conn.recv(9216)
+        if len(file_data) < 9216:
+            receiver.send(file_data)
+            break"""
 
     print("finish")
     
+
 #Function to create groups
 def create_gruop(name, integrants):
     global clients
@@ -171,12 +185,12 @@ def manage_recv(conn=None, addr=None):
         global groups
 
         try:
-            type_data = conn.recv(4096)
-            
+            type_data = conn.recv(4064)
+
             #Type connection
             if type_data != b'':
                 type_data = pickle.loads(type_data)
-                
+               
                 #Recieve message
                 if type_data[0] == "dm_message":
                     sender = type_data[1]
@@ -193,7 +207,8 @@ def manage_recv(conn=None, addr=None):
 
                 #Recieve image
                 if type_data[0] == "send_image":
-                    handle_images(conn, type_data[1], type_data[2])
+                    #Handle images with recv
+                    handle_images(conn, type_data[1], type_data[2], type_data[3])
 
                 #Create group
                 if type_data[0] == "create_group":
@@ -213,7 +228,7 @@ def manage_recv(conn=None, addr=None):
                     users_online(req=True, reciever=type_data[1])
 
         except Exception as ex: 
-            print(ex)
+            print(ex, "manage_recv")
             break
                 
                                   

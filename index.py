@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import filedialog
 
+import os
 import json 
 import threading
 import socket
@@ -18,7 +19,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8005
+        self.PORT = 8004
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -184,7 +185,7 @@ class App:
                         message = type_data[2]
                         
                         #Manage the chat file
-                        self.manage_files(req=False, method="write", name=sender, flag="dms", new_data=[message])
+                        self.messages_files(req=False, method="write", name=sender, flag="dms", new_data=[message])
 
                         if sender == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -195,7 +196,7 @@ class App:
                         group_name = type_data[1]
                         message = type_data[2]
                         #Manage the chat file
-                        self.manage_files(req=False, method="write", name=group_name, flag="groups", new_data=[message])
+                        self.messages_files(req=False, method="write", name=group_name, flag="groups", new_data=[message])
 
                         if group_name == self.listbox_userson.get(ANCHOR):
                             self.refresh_chat()
@@ -203,8 +204,8 @@ class App:
 
                     #Handle send images
                     if type_data[0] == "send_image":
-                        self.recv_images()
-                        
+                        self.images_files(method="save", name=type_data[1])
+                                        
 
                     #Online Users Recv
                     if type_data[0] == "online_users":
@@ -229,7 +230,7 @@ class App:
 
                     #Create Group
                     if type_data[0] == "create_group":
-                        self.manage_files(req=True, method="write", new_data={type_data[1]: type_data[2]})
+                        self.messages_files(req=True, method="write", new_data={type_data[1]: type_data[2]})
 
 
                     #Check invalid user Recv
@@ -283,7 +284,7 @@ class App:
                 self.listbox_userson.delete(0, END)
                 
                 #List of groups req
-                self.groups = self.manage_files(req=True, method="open")
+                self.groups = self.messages_files(req=True, method="open")
             
                 #Update the list with the groups
                 for group in list(self.groups.keys()):
@@ -304,33 +305,18 @@ class App:
     
         #Open the file and read 
         file = open("test.jpg", 'rb')
-        file_data = file.read(2048)
+        file_data = file.read()
 
         #Encode the data
         receiver = self.listbox_userson.get(ANCHOR)
-        type_data = ["send_image", self.username_client, receiver]
-        type_data = pickle.dumps(type_data)
-        self.client.send(type_data)
+        type_data = ["send_image", self.username_client, receiver, len(file_data)]
+        type_data = pickle.dumps(type_data) 
 
-        #Send the type of recv, sender and reciever
-        while file_data:
-            self.client.send(file_data)
-            file_data = file.read(2048)
+        self.client.send(type_data)
+        self.client.send(file_data)
+            
         file.close()
-        
-        
-    def recv_images(self):
-        #Create an image with the data recv from the sender
-        file = open(f'prueba_image.jpg', 'wb')
-        file_data = self.client.recv(2048)
-        while file_data:
-            file.write(file_data)
-            file_data = self.client.recv(2048)
-            if len(file_data) < 2048:
-                file.write(file_data)
-        
-        file.close()
-        
+         
 
     #Function to send the message and username
     def send_messages(self):
@@ -355,7 +341,7 @@ class App:
         message = f"{self.username_client}: {message}"
 
         #Manage the chat file
-        self.manage_files(req=False, method="write", name=receiver, new_data=[message])
+        self.messages_files(req=False, method="write", name=receiver, new_data=[message])
         
         #Refresh the chat
         self.refresh_chat()
@@ -365,23 +351,39 @@ class App:
         self.button_chat.configure(state="disabled")
 
 
-    #Function to manage the chat data from json
-    def manage_files(self, req, method=None, name=None, new_data=None, flag=None):
+    #Function to manage the chats files
+    def messages_files(self, req, method=None, name=None, new_data=None, flag=None):
+        
+
         #Validate if the user is requesting the list groups or messages
         if req != True:
+            #Try to create the user folder to save the dm chat
+            try:
+                os.mkdir(f'chats/dms/{name}_chat')      
+            except:
+                pass
+
+            #Try to create the user folder to save the dm chat
+            try:
+                os.mkdir(f'chats/groups/{name}_chat')
+            except:
+                pass
+
            #Validate if the user is in dms chat
-            if self.flags.get("dms") == True:
-                directory = f"chats/dms/{name}_chat.json"
+            if self.flags.get("dms") == True: 
+                directory = f"chats/dms/{name}_chat/{name}_chat.json"
+
                 #Validate if a new groups message arrive while in dms chat
                 if flag ==  "groups":
-                    directory = f"chats/groups/{name}_chat.json"
+                    directory = f"chats/groups/{name}_chat/{name}_chat.json"
 
             #Validate if the user is in dms chat
             if self.flags.get("groups") == True:
-                directory = f"chats/groups/{name}_chat.json"
+                directory = f"chats/groups/{name}_chat/{name}_chat.json"
+
                 #Validate if a new dms message arrive while in groups chat
                 if flag ==  "dms":
-                    directory = f"chats/dms/{name}_chat.json"
+                    directory = f"chats/dms/{name}_chat/{name}_chat.json"
 
         #Requesting the list groups
         else:
@@ -413,7 +415,7 @@ class App:
 
         #Manage the function if the file doesnt exists
         except Exception as ex:
-            print(ex, "manage_files")
+            print(ex, "messages_files")
             #Write method
             if method == "write":
                 #Save the data into the file
@@ -430,6 +432,36 @@ class App:
                     return {}
 
 
+    #Function to manage the images files
+    def images_files(self, method=None, name=None):
+        #Try to create the user folder to save the dm chat
+        try:
+            os.mkdir(f'chats/dms/{name}_chat/images')      
+        except:
+            pass
+
+        #Try to create the user folder to save the dm chat
+        try:
+            os.mkdir(f'chats/groups/{name}_chat/images')
+        except:
+            pass
+        
+        
+        #Validate if the user want to save or open the image
+        if method == "save":
+            #Create an image with the data recv from the sender
+            file = open(f'chats/dms/{name}_chat/images/prueba_image.jpg', 'wb')
+            file_data = self.client.recv(9216)
+            while file_data:
+                file.write(file_data)
+                file_data = self.client.recv(9216)
+                if len(file_data) < 9216:
+                    file.write(file_data)
+                    break
+                        
+            file.close()
+            print("finish image")
+
     #Function to refresh a chat
     def refresh_chat(self):
         #Chat the textbox state
@@ -437,7 +469,7 @@ class App:
 
         #Get the chat user and the messages from the chat file
         name = self.listbox_userson.get(ANCHOR)
-        data = self.manage_files(req=False, method="open", name=name)
+        data = self.messages_files(req=False, method="open", name=name)
             
         #Delete the textbox
         self.textbox_chat.delete("1.0", END)
@@ -567,6 +599,7 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
+        self.send_images()
 
     #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):
@@ -641,7 +674,7 @@ class App:
         type_data = pickle.dumps(type_data)
 
         #Add the group to the list of groups and update the listbox
-        self.manage_files(req=True, method="write", new_data={group_name: integrants})
+        self.messages_files(req=True, method="write", new_data={group_name: integrants})
         self.chat_type("button_groups")
 
         #Send the information
