@@ -19,7 +19,7 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8004
+        self.PORT = 8008
         self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
@@ -195,6 +195,7 @@ class App:
                     if type_data[0] == "group_message":
                         group_name = type_data[1]
                         message = type_data[2]
+
                         #Manage the chat file
                         self.messages_files(req=False, method="write", name=group_name, flag="groups", new_data=[message])
 
@@ -209,9 +210,12 @@ class App:
 
                     #Online Users Recv
                     if type_data[0] == "online_users":
+                        #Check if the user chat is online
+                        if self.listbox_userson.get(ANCHOR) not in type_data[1]:
+                            self.chat_stage()
+
                         #Delete the list
                         self.listbox_userson.delete(0, END)
-
 
                         #Validation "dms" flag
                         if self.flags.get("dms") == True:
@@ -305,16 +309,25 @@ class App:
     
         #Open the file and read 
         file = open("test.jpg", 'rb')
-        file_data = file.read()
-
+        file_data = file.read(2048)
+        
         #Encode the data
         receiver = self.listbox_userson.get(ANCHOR)
-        type_data = ["send_image", self.username_client, receiver, len(file_data)]
-        type_data = pickle.dumps(type_data) 
+        type_data = ["send_image", str(file_data)]
+        type_data = pickle.dumps(type_data)
+        image = open('server_image.jpg', 'wb')
 
-        self.client.send(type_data)
-        self.client.send(file_data)
-            
+        while file_data:
+            omg = pickle.loads(type_data)
+            bsa = bytes(omg[1], encoding='utf-8')
+            print(type(bsa))
+            image.write(bsa)
+            #self.client.send(pickle.dumps(file_data))
+            file_data = file.read(2048)
+            type_data = ["send_image", str(file_data)]
+            type_data = pickle.dumps(type_data)
+
+        image.close()
         file.close()
          
 
@@ -353,8 +366,6 @@ class App:
 
     #Function to manage the chats files
     def messages_files(self, req, method=None, name=None, new_data=None, flag=None):
-        
-
         #Validate if the user is requesting the list groups or messages
         if req != True:
             #Try to create the user folder to save the dm chat
@@ -416,6 +427,7 @@ class App:
         #Manage the function if the file doesnt exists
         except Exception as ex:
             print(ex, "messages_files")
+
             #Write method
             if method == "write":
                 #Save the data into the file
@@ -461,6 +473,7 @@ class App:
                         
             file.close()
             print("finish image")
+
 
     #Function to refresh a chat
     def refresh_chat(self):
@@ -525,11 +538,9 @@ class App:
             #Entry and Buttons
             self.entry_chat.place(relwidth = 0.75, relheight = 0.65, relx = 0.02, rely = 0.08)
             self.button_chat.place(relwidth = 0.10, relheight = 0.65, relx = 0.78, rely = 0.08)
-            self.button_sendimg.place(relwidth = 0.10, relheight = 0.65, relx = 0.89, rely = 0.08)
  
             #Refresh chat
             self.refresh_chat()
-                 
 
     #Function to validate buttons
     def validate_buttons(self, *args):
@@ -582,6 +593,12 @@ class App:
         self.button_user.place_forget()
         self.label_user.place_forget()
 
+        #Remove "select chat" stage
+        self.textbox_chat.place_forget()
+        self.button_chat.place_forget()
+        self.scrollbar_chat.place_forget()
+        self.label_wchat.place_forget()
+
         #Change the geometry and title
         self.wind.geometry("900x700")
         self.wind.title("Chat")
@@ -599,7 +616,7 @@ class App:
         #Other
         self.listbox_userson.place(relwidth = 0.999, relheight = 0.90, relx = 0, rely = 0.10)
         self.label_chatype.place(relwidth = 0.999, relheight = 0.05, relx = 0, rely = 0.05)
-        self.send_images()
+
 
     #Function to create a window for the group creation
     def create_windowgr(self, phase, name=None):
