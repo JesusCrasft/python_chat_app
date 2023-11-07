@@ -19,9 +19,13 @@
 OS X, Linux y Windows
 La libreria OS, Socket, Threading y JSON no son necesarias instalarlas, al instalar python vienen por defecto.
 
-Para instalar las librerias. Abrir un terminal y ejecutar los siguientes comandos:
+Primer hay que hacer un clone del proyecto de la siguiente forma:
 
+```Shell
 git clone https://github.com/JesusCrasft/python_chat_app
+```
+
+Luego hay que situarse en la carpeta del clone y instalar las librerias:
 
 ```Shell
 cd python_chat_app
