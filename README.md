@@ -17,6 +17,7 @@
 - [x] Completar el codigo
 - [x] Probar el el codigo
 - [x] Hacer el readme
+- [ ] Terminar los issues pendientes
 
 ## Contribute / Para contribuir
 1. Has un [Fork](https://github.com/JesusCrasft/python_chat_app/fork)
