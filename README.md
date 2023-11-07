@@ -1,6 +1,7 @@
 # Python Chat App
-> Es una aplicacion que estoy desarrollando para poner en practica mis conocimnientos de Python, Base de datos y Modulos.
-> Basicamente sera un chat en tiempo real
+> Es una aplicacion que estoy desarrollando para poner en practica mis conocimnientos de Python, Socket y Modulos.
+> Es un chat en tiempo real en donde se puede chatear con personas conectadas al mismo servidor, incluso crear grupos.
+> Aun falta por pulir algunas cosas y agregar otras por lo que ire actualizando este repositorio de vez en cuando
 
 ## Screenshots / Capturas de Pantalla
 
