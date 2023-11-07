@@ -5,11 +5,41 @@
 ## Screenshots / Capturas de Pantalla
 
 ## Tech-framework used / Tecnologías Usadas
-- Aun en desarrollo
+- Python
+  - Tkinter
+  - Socket
+  - Threading
+  - JSON
+  - OS
+  - Pickle
  
 ## Install / Instalación
 #### OS X, Linux y Windows
-- Aun en desarrollo
+OS X, Linux y Windows
+La libreria OS, Socket, Threading y JSON no son necesarias instalarlas, al instalar python vienen por defecto.
+
+Para instalar las librerias. Abrir un terminal y ejecutar los siguientes comandos:
+
+git clone https://github.com/JesusCrasft/python_chat_app
+
+```Shell
+cd python_chat_app
+
+pip install tk pickle
+```
+
+Luego hay 2 alternativas, ejecutar el servidor en una carpeta aparte o ejecutarlo junto a un cliente.
+
+Ahora en la linea numero 23 llamada "self.SERVER" del archivo "client.py" tiene que colocar la ipv4 de la computadora donde se este ejecutando el servidor.
+
+Luego situandose en la carpeta que contiene el archivo "server.py" tiene que ejecutar el siguiente comando.
+```Shell
+python server.py
+```
+Y de la misma forma en la carpeta que contiene el archivo "client.py" tiene que ejecutar el siguiente comando.
+```Shell
+python client.py
+```
 
 ## Tasks / Lista de Tareas
 - [x] Inicializar repositorio
