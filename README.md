@@ -28,9 +28,9 @@ cd python_chat_app
 pip install tk pickle
 ```
 
-Luego hay 2 alternativas, ejecutar el servidor en una carpeta aparte o ejecutarlo junto a un cliente.
+Luego hay 2 alternativas, ejecutar el servidor en la carpeta clone de github o en una diferente, de cualquiera de las dos maneras necesita hacer lo siguiente para que funcione:
 
-Ahora en la linea numero 23 llamada "self.SERVER" del archivo "client.py" tiene que colocar la ipv4 de la computadora donde se este ejecutando el servidor.
+En la linea numero 23 llamada "self.SERVER" del archivo "client.py" tiene que colocar la ipv4 de la maquina donde se este ejecutando el servidor.
 
 Luego situandose en la carpeta que contiene el archivo "server.py" tiene que ejecutar el siguiente comando.
 ```Shell
