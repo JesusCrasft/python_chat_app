@@ -19,8 +19,8 @@ class App:
 
         #Constants
         self.HEADER = 4064
-        self.PORT = 8008
-        self.SERVER = ""
+        self.PORT = 8001
+        self.SERVER = "192.168.1.205"
         self.ADDR = (self.SERVER, self.PORT)
 
         #Variables
@@ -36,8 +36,8 @@ class App:
             "dms": True,
             #groups chat type
             "groups": False
-        }
-       
+        }  
+    
 
         """Labels"""
         #Username Label
@@ -66,7 +66,7 @@ class App:
         self.label_user.place(relwidth = 0.9999, relheight = 0.9999, relx = 0.0, rely = 0.0)
 
         #Chat Type
-        self.label_chatype = Label(self.label_contacts, text='Online Users')
+        self.label_chatype = Label(self.label_contacts, text="Online Users")
         self.label_chatype.configure(background='#1F1F1F', relief=SOLID, borderwidth=2, fg='gray')
 
         """Entrys"""
@@ -210,15 +210,17 @@ class App:
 
                     #Online Users Recv
                     if type_data[0] == "online_users":
-                        #Check if the user chat is online
-                        if self.listbox_userson.get(ANCHOR) not in type_data[1]:
-                            self.chat_stage()
-
-                        #Delete the list
+                        #Save the old list and delete the list
+                        old_list = self.listbox_userson
                         self.listbox_userson.delete(0, END)
 
                         #Validation "dms" flag
                         if self.flags.get("dms") == True:
+                            #Check if the current user chat is online
+                            if old_list.get(ANCHOR) not in type_data[1]:
+                                self.chat_stage()
+                            
+                            #Insert the users online
                             for user in type_data[1]:
                                 if user != self.username_client:
                                     self.listbox_userson.insert(0, user)
@@ -274,6 +276,9 @@ class App:
 
             #Button Messages
             if value == "button_message":
+                #Change the chatype name
+                self.label_chatype.configure(text="Online Users")
+
                 #flag "dms" True
                 self.flags.update({"dms": True})
                 self.flags.update({"groups": False})
@@ -284,6 +289,9 @@ class App:
             """Groups"""
             #Request Groups
             if value == "button_groups":
+                #Change the chatype name
+                self.label_chatype.configure(text="Groups")
+
                 #Delete the list
                 self.listbox_userson.delete(0, END)
                 
@@ -368,32 +376,33 @@ class App:
     def messages_files(self, req, method=None, name=None, new_data=None, flag=None):
         #Validate if the user is requesting the list groups or messages
         if req != True:
-            #Try to create the user folder to save the dm chat
-            try:
-                os.mkdir(f'chats/dms/{name}_chat')      
-            except:
-                pass
-
-            #Try to create the user folder to save the dm chat
-            try:
-                os.mkdir(f'chats/groups/{name}_chat')
-            except:
-                pass
-
            #Validate if the user is in dms chat
             if self.flags.get("dms") == True: 
+                #Create the directory if not exists
+                self.create_direct(flag="dms", name=name)
+                
+                #Directory
                 directory = f"chats/dms/{name}_chat/{name}_chat.json"
 
                 #Validate if a new groups message arrive while in dms chat
-                if flag ==  "groups":
+                if flag == "groups":
+                    #Create the directory if not exists
+                    self.create_direct(flag="groups", name=name)
                     directory = f"chats/groups/{name}_chat/{name}_chat.json"
+
 
             #Validate if the user is in dms chat
             if self.flags.get("groups") == True:
+                #Create the directory if not exists
+                self.create_direct(flag="groups", name=name)
+
+                #Directory
                 directory = f"chats/groups/{name}_chat/{name}_chat.json"
 
                 #Validate if a new dms message arrive while in groups chat
-                if flag ==  "dms":
+                if flag == "dms":
+                    #Create the directory if not exists
+                    self.create_direct(flag="dms", name=name)
                     directory = f"chats/dms/{name}_chat/{name}_chat.json"
 
         #Requesting the list groups
@@ -473,6 +482,23 @@ class App:
                         
             file.close()
             print("finish image")
+
+
+    #Function to create directorys with os
+    def create_direct(self, flag, name):
+        if flag == "dms":
+            #Try to create the user folder to save the dm chat
+            try:
+                os.mkdir(f'chats/dms/{name}_chat')      
+            except:
+                pass
+
+        elif flag == "groups":
+            #Try to create the user folder to save the dm chat
+            try:
+                os.mkdir(f'chats/groups/{name}_chat')
+            except:
+                pass
 
 
     #Function to refresh a chat

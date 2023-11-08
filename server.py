@@ -4,7 +4,7 @@ import pickle
 import time
 
 HEADER = 4064
-PORT = 8008
+PORT = 8001
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
 
@@ -32,8 +32,11 @@ def handle_megroup(sender, group_name, message):
     #Send the information to the integrants
     for i in integrants:
         if i != sender:
-            reciever = clients.get(i)
-            reciever.send(type_data)
+            if i in list(clients.keys()):
+                reciever = clients.get(i)
+                reciever.send(type_data)
+            else:
+                print("no esta conectado")
 
 
 #Function to handle the direct msg
